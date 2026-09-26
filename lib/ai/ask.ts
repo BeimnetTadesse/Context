@@ -4,7 +4,7 @@ import type { Book } from "@/lib/bible/books";
 import { LABELS, type Label } from "@/lib/labels";
 import { generateStructured, recordValidation } from "./client";
 import { chapterEvidence, renderEvidence, type EvidencePack } from "./evidence";
-import { checkClaim, soundsAuthoritative, type ValidationIssue } from "./validate";
+import { checkClaim, soundsAuthoritative, stripIds, type ValidationIssue } from "./validate";
 
 export interface EvidenceRef {
   id: string;
@@ -60,8 +60,8 @@ If the evidence does not answer the question, return status "insufficient_eviden
     segments,
     unanswered:
       segments.length === 0
-        ? output.unanswered ?? "I don’t have enough reliable evidence in the current sources to answer that."
-        : output.unanswered,
+        ? stripIds(output.unanswered ?? "I don’t have enough reliable evidence in the current sources to answer that.")
+        : output.unanswered && stripIds(output.unanswered),
     dropped: issues.length,
   };
 }
@@ -100,5 +100,5 @@ Be conservative: if the evidence pack does not support it, label it personal (or
     issues.push({ statement, problem: "no valid evidence → personal" });
   }
   await recordValidation(runId, { issues });
-  return { label, reasoning: output.reasoning, textSays: output.text_says, evidence: refsFor(cites, pack) };
+  return { label, reasoning: stripIds(output.reasoning), textSays: output.text_says ? stripIds(output.text_says) : null, evidence: refsFor(cites, pack) };
 }

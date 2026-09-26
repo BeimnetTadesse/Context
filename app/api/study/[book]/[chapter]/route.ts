@@ -9,7 +9,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/study/[book]/[
   const { book: slug, chapter: ch } = await ctx.params;
   const target = ntChapter(slug, ch);
   if (!target) return json({ error: "not_found" }, 404);
-  if (!aiConfigured()) return json({ error: "ai_unavailable", message: "Add ANTHROPIC_API_KEY to .env.local to prepare studies." }, 503);
+  if (!aiConfigured()) return json({ error: "ai_unavailable", message: "Add GEMINI_API_KEY to .env.local to prepare studies." }, 503);
 
   const claim = await beginGeneration(target.book.id, target.chapter);
   if (claim !== "started") return json({ status: claim === "ready" ? "ready" : "pending" });

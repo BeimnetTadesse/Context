@@ -3,9 +3,9 @@ import * as z from "zod/v4";
 import { sql } from "@/lib/db";
 import type { Book } from "@/lib/bible/books";
 import { LABELS } from "@/lib/labels";
-import { MODEL, PROMPT_VERSION, generateStructured, recordValidation } from "@/lib/ai/client";
+import { PROMPT_VERSION, currentModel, generateStructured, recordValidation } from "@/lib/ai/client";
 import { chapterEvidence, renderEvidence, type EvidencePack } from "@/lib/ai/evidence";
-import { checkClaim, checkClaims, soundsAuthoritative, type CheckedClaim, type DraftClaim, type ValidationIssue } from "@/lib/ai/validate";
+import { checkClaim, checkClaims, soundsAuthoritative, stripIds, type CheckedClaim, type DraftClaim, type ValidationIssue } from "@/lib/ai/validate";
 
 // ── What we ask the model for (structured output) ──
 const Claim = z.object({
@@ -143,7 +143,7 @@ export async function saveStudy(book: Book, chapter: number, s: Study, pack: Evi
       const hi = clampOrd(sec.end_verse, lastOrd);
       if (hi < lo) continue;
       await tx`insert into sections (book_id, chapter, start_ord, end_ord, title, summary, origin)
-               values (${book.id}, ${chapter}, ${lo}, ${hi}, ${sec.title}, ${sec.summary}, 'ai_draft')`;
+               values (${book.id}, ${chapter}, ${lo}, ${hi}, ${stripIds(sec.title)}, ${stripIds(sec.summary)}, 'ai_draft')`;
     }
 
     for (const c of s.margin_notes) {
@@ -167,7 +167,7 @@ export async function saveStudy(book: Book, chapter: number, s: Study, pack: Evi
         continue;
       }
       await tx`insert into language_notes (book_id, chapter, strongs, meaning_here, translation_note, caution, origin, sort)
-               values (${book.id}, ${chapter}, ${term.strongs}, ${term.meaning_here}, ${term.translation_note}, ${term.caution}, 'ai_draft', ${sort++})`;
+               values (${book.id}, ${chapter}, ${term.strongs}, ${stripIds(term.meaning_here)}, ${term.translation_note && stripIds(term.translation_note)}, ${term.caution && stripIds(term.caution)}, 'ai_draft', ${sort++})`;
       for (const ok of checkClaims(term.claims, pack, issues)) await insertClaim(ok, "language", null, term.strongs);
     }
 
@@ -179,7 +179,7 @@ export async function saveStudy(book: Book, chapter: number, s: Study, pack: Evi
         continue;
       }
       await tx`insert into connections (book_id, chapter, group_name, relation, to_start, to_end, explanation, sort)
-               values (${book.id}, ${chapter}, ${cn.group}, ${cn.relation}, ${item.meta!.to_start as number}, ${item.meta!.to_end as number}, ${cn.explanation}, ${sort++})`;
+               values (${book.id}, ${chapter}, ${cn.group}, ${cn.relation}, ${item.meta!.to_start as number}, ${item.meta!.to_end as number}, ${stripIds(cn.explanation)}, ${sort++})`;
     }
 
     sort = 0;
@@ -187,7 +187,7 @@ export async function saveStudy(book: Book, chapter: number, s: Study, pack: Evi
       const [qrow] = await tx<{ id: number }[]>`
         insert into interp_questions (book_id, chapter, start_ord, end_ord, question, common_ground, origin, sort)
         values (${book.id}, ${chapter}, ${clampOrd(q.start_verse, firstOrd)}, ${clampOrd(q.end_verse, lastOrd)},
-                ${q.question}, ${q.common_ground}, 'ai_draft', ${sort++}) returning id`;
+                ${stripIds(q.question)}, ${stripIds(q.common_ground)}, 'ai_draft', ${sort++}) returning id`;
       let v = 0;
       for (const view of q.views) {
         const [vrow] = await tx<{ id: number }[]>`
@@ -208,16 +208,16 @@ export async function saveStudy(book: Book, chapter: number, s: Study, pack: Evi
       if (!ok || ok.label !== st.expected_label) continue; // the answer key must survive validation unchanged
       const claimId = await insertClaim(ok, "reflect");
       await tx`insert into reflection_items (book_id, chapter, kind, text, expected_label, explanation, claim_id, sort)
-               values (${book.id}, ${chapter}, 'statement', ${st.text}, ${st.expected_label}, ${st.explanation}, ${claimId}, ${sort++})`;
+               values (${book.id}, ${chapter}, 'statement', ${stripIds(st.text)}, ${st.expected_label}, ${stripIds(st.explanation)}, ${claimId}, ${sort++})`;
     }
     for (const p of s.reflect_prompts) {
       await tx`insert into reflection_items (book_id, chapter, kind, text, anchor_start, anchor_end, sort)
-               values (${book.id}, ${chapter}, 'prompt', ${p.prompt}, ${clampOrd(p.start_verse, firstOrd)}, ${clampOrd(p.end_verse, lastOrd)}, ${sort++})`;
+               values (${book.id}, ${chapter}, 'prompt', ${stripIds(p.prompt)}, ${clampOrd(p.start_verse, firstOrd)}, ${clampOrd(p.end_verse, lastOrd)}, ${sort++})`;
     }
 
     await tx`
       insert into chapter_studies (book_id, chapter, status, model, prompt_version, generated_at, error)
-      values (${book.id}, ${chapter}, 'ready', ${MODEL}, ${PROMPT_VERSION}, now(), null)
+      values (${book.id}, ${chapter}, 'ready', ${currentModel()}, ${PROMPT_VERSION}, now(), null)
       on conflict (book_id, chapter) do update set status = 'ready', model = excluded.model,
         prompt_version = excluded.prompt_version, generated_at = now(), error = null`;
   });
