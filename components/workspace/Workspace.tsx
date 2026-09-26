@@ -1,14 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Wordmark } from "@/components/ui";
+import { Dot, Wordmark } from "@/components/ui";
 import type { ChapterData, GreekWord } from "@/lib/data/chapter";
+import type { StudyData } from "@/lib/data/study";
+import { LABEL_INFO, LABELS, type Label } from "@/lib/labels";
 import { STEPS, type StepKey } from "@/lib/steps";
 import { studyPath } from "@/lib/bible/refs";
+import { StudyContext } from "@/components/study/context";
+import { ConnectionsStep, ContextStep, InterpretationsStep, LanguageStep, ObserveStep } from "@/components/study/Steps";
+import { ReflectStep, type SavedNote } from "@/components/study/Reflect";
+import type { AskRequest } from "./AskPanel";
 import { Margin } from "./Margin";
 import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
-import { READ_MODES, ReadStep, type ReadMode } from "./ReadStep";
+import { READ_MODES, ReadStep, type PhraseMark, type ReadMode } from "./ReadStep";
+import { SelectionPopover } from "./SelectionPopover";
 
 const STEP_INTRO: Record<StepKey, string> = {
   read: "Read the whole chapter before anything else. Switch to Greek to explore any word.",
@@ -31,13 +38,29 @@ export function Workspace({
   books,
   initialStep,
   initialMode,
+  study,
+  curator,
+  noteCount: initialNoteCount,
+  guesses,
+  notes,
 }: {
   data: ChapterData;
   books: NtBook[];
   initialStep: StepKey;
   initialMode: ReadMode;
+  study: StudyData;
+  curator: boolean;
+  noteCount: number;
+  guesses: Record<number, Label>;
+  notes: SavedNote[];
 }) {
   const [step, setStep] = useState<StepKey>(initialStep);
+  const [noteCount, setNoteCount] = useState(initialNoteCount);
+  const [trail, setTrail] = useState<string | null>(null);
+  const [layer, setLayer] = useState(true);
+  const [tab, setTab] = useState<"margin" | "ask">("margin");
+  const [askRequest, setAskRequest] = useState<AskRequest | null>(null);
+  const textRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<ReadMode>(initialMode);
   const [word, setWord] = useState<GreekWord | null>(null);
   const [switcher, setSwitcher] = useState(false);
@@ -80,6 +103,31 @@ export function Workspace({
 
   const closeSwitcher = useCallback(() => setSwitcher(false), []);
 
+  const openAsk = useCallback((kind: "ask" | "check", text: string) => {
+    setTab("ask");
+    setAskRequest({ kind, text, nonce: Date.now() });
+    if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
+  }, []);
+
+  // Lettered margin notes: Read-step claims with a verified quote, in text order.
+  const letters = useMemo(
+    () =>
+      study.claims
+        .filter((c) => c.step === "read" && c.anchors.some((a) => a.quote))
+        .sort((a, b) => a.anchors[0].ord - b.anchors[0].ord)
+        .map((c, i) => ({ ...c, letter: String.fromCharCode(97 + i) })),
+    [study.claims],
+  );
+  const marks: PhraseMark[] = layer
+    ? letters.flatMap((c) => c.anchors.filter((a) => a.quote).map((a) => ({ ord: a.ord, quote: a.quote!, label: c.label, letter: c.letter })))
+    : [];
+  const ledgerTotal = LABELS.reduce((n, l) => n + study.ledger[l], 0);
+
+  const ctx = useMemo(
+    () => ({ book: data.book, chapter: data.chapter, study, curator, trail, setTrail, ask: (q: string) => openAsk("ask", q), setNoteCount }),
+    [data.book, data.chapter, study, curator, trail, openAsk],
+  );
+
   const selectWord = (w: GreekWord) => {
     setWord(w);
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
@@ -88,6 +136,7 @@ export function Workspace({
   const translationLabel = { web: "WEB", amh: "AMH", parallel: "WEB · AMH", greek: "SBLGNT" }[mode];
 
   return (
+    <StudyContext.Provider value={ctx}>
     <div className="min-h-dvh">
       {/* Top bar */}
       <header className="sticky top-0 z-30 border-b border-rule bg-paper/95 backdrop-blur">
@@ -129,7 +178,7 @@ export function Workspace({
               <span className="hidden sm:inline">Notebook</span>
               <span className="sm:hidden">✎</span>
               <span className="grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1 font-mono text-[0.65rem] text-paper">
-                0
+                {noteCount}
               </span>
             </Link>
           </div>
@@ -202,8 +251,24 @@ export function Workspace({
           <p className="eyebrow text-accent">
             Step {current.numeral} of VII
           </p>
-          <h1 className="mt-3 font-serif text-5xl">{current.name}</h1>
+          <h1 className="mt-3 font-serif text-[clamp(2.4rem,4vw,3.2rem)] leading-tight">{current.name}</h1>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-2">{STEP_INTRO[step]}</p>
+          {ledgerTotal > 0 && (
+            <div className="mt-6 max-w-2xl" aria-label="Evidence ledger">
+              <div className="flex h-1.5 overflow-hidden rounded-full bg-rule">
+                {LABELS.filter((l) => study.ledger[l]).map((l) => (
+                  <span key={l} style={{ flex: study.ledger[l], background: `var(--l-${l})` }} />
+                ))}
+              </div>
+              <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[0.68rem] uppercase tracking-widest text-muted">
+                <span className="text-ink-2">{data.book.name} {data.chapter} ·</span>
+                {LABELS.filter((l) => study.ledger[l]).map((l) => (
+                  <span key={l} className="flex items-center gap-1.5"><Dot label={l} size={6} />{study.ledger[l]} {LABEL_INFO[l].short}</span>
+                ))}
+                {study.claims.every((c) => c.status !== "verified") && <span>· all unverified</span>}
+              </p>
+            </div>
+          )}
 
           {step === "read" ? (
             <>
@@ -223,27 +288,56 @@ export function Workspace({
                     </button>
                   ))}
                 </div>
-                <label
-                  className="flex cursor-not-allowed items-center gap-3 text-sm text-muted"
-                  title="Appears once this chapter's claims are prepared"
+                {(() => {
+                  const layerOn = layer && letters.length > 0 && mode !== "amh" && mode !== "greek";
+                  return (
+                <button
+                  onClick={() => setLayer(!layer)}
+                  disabled={letters.length === 0 || mode === "amh" || mode === "greek"}
+                  role="switch"
+                  aria-checked={layerOn}
+                  className="flex items-center gap-3 text-sm disabled:cursor-not-allowed disabled:text-muted"
+                  title={letters.length ? "Underline key phrases by provenance label" : "Appears once this chapter's study is prepared"}
                 >
-                  <span className="relative h-6 w-11 rounded-full bg-rule">
-                    <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-card" />
+                  <span className={`relative h-6 w-11 rounded-full transition ${layerOn ? "bg-ink" : "bg-rule"}`}>
+                    <span className={`absolute top-1 h-4 w-4 rounded-full bg-card transition-all ${layerOn ? "left-6" : "left-1"}`} />
                   </span>
                   Provenance layer
-                </label>
+                </button>
+                  );
+                })()}
               </div>
-              <div className="mt-10">
-                <ReadStep verses={data.verses} mode={mode} selected={word} onSelectWord={selectWord} />
+              {mode !== "greek" && (
+                <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Select any phrase to ask · Text or Assumption?</p>
+              )}
+              <div className="mt-8" ref={textRef}>
+                <ReadStep verses={data.verses} mode={mode} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} />
               </div>
+              <SelectionPopover
+                container={textRef}
+                onCheck={(t) => openAsk("check", t)}
+                onAsk={(t) => openAsk("ask", `What does “${t}” mean in this passage?`)}
+              />
             </>
+          ) : step === "observe" ? (
+            <ObserveStep verses={data.verses} />
+          ) : step === "context" ? (
+            <ContextStep chapterCount={data.chapterCount} />
+          ) : step === "language" ? (
+            <LanguageStep />
+          ) : step === "connections" ? (
+            <ConnectionsStep />
+          ) : step === "interpretations" ? (
+            <InterpretationsStep />
           ) : (
-            <div className="mt-10 rounded-2xl border border-dashed border-rule p-8 text-ink-2">
-              <p className="eyebrow mb-2 text-accent">Being prepared</p>
-              <p className="max-w-xl leading-relaxed">
-                The {current.name.toLowerCase()} study for {data.book.name} {data.chapter} hasn’t been prepared yet. Every
-                claim here will carry its label and its sources.
-              </p>
+            <ReflectStep guesses={guesses} notes={notes} />
+          )}
+
+          {step !== "reflect" && (
+            <div className="mt-14 flex justify-end">
+              <button onClick={() => changeStep(STEPS[stepIndex + 1].key)} className="rounded-xl border border-ink px-5 py-2.5 hover:bg-ink hover:text-paper">
+                Next: {STEPS[stepIndex + 1].name} →
+              </button>
             </div>
           )}
 
@@ -262,35 +356,31 @@ export function Workspace({
           </div>
         </main>
 
-        {/* Margin (desktop) */}
-        <aside className="hidden border-l border-rule px-8 py-12 lg:block">
-          <div className="sticky top-28 max-h-[calc(100dvh-8rem)] overflow-y-auto pb-8">
-            <Margin mode={mode} word={word} onCloseWord={() => setWord(null)} />
+        {/* Margin: one instance. Desktop = right column; phone = bottom sheet. */}
+        <aside
+          className={`border-rule lg:block lg:border-l lg:px-8 lg:py-12 ${
+            sheet ? "fixed inset-x-0 bottom-0 z-50 block max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-paper px-5 pb-10 pt-4 shadow-2xl lg:static lg:max-h-none lg:rounded-none lg:shadow-none" : "hidden"
+          }`}
+        >
+          <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-rule lg:hidden" />
+          <div className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:pb-8">
+            <Margin step={step} mode={mode} word={word} onCloseWord={() => setWord(null)} tab={tab} setTab={setTab} askRequest={askRequest} letters={letters} />
           </div>
         </aside>
       </div>
 
-      {/* Mobile margin button + sheet */}
+      {/* Phone: margin button + backdrop for the sheet */}
       <button
         onClick={() => setSheet(true)}
         className="fixed bottom-6 right-5 z-30 flex items-center gap-3 rounded-full bg-ink px-5 py-3 text-paper shadow-lg lg:hidden"
       >
-        <span className="font-mono text-xs text-paper/60">{word ? "Word" : "a–g"}</span> Margin
+        <span className="font-mono text-xs text-paper/60">{word ? "Word" : letters.length ? `a–${letters[letters.length - 1].letter}` : "Ask"}</span> Margin
       </button>
-      {sheet && (
-        <div className="fixed inset-0 z-40 bg-ink/30 lg:hidden" onClick={() => setSheet(false)}>
-          <div
-            className="absolute inset-x-0 bottom-0 max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-paper px-5 pb-10 pt-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-rule" />
-            <Margin mode={mode} word={word} onCloseWord={() => setWord(null)} />
-          </div>
-        </div>
-      )}
+      {sheet && <div className="fixed inset-0 z-40 bg-ink/30 lg:hidden" onClick={() => setSheet(false)} />}
 
       {switcher && <PassageSwitcher books={books} onClose={closeSwitcher} />}
     </div>
+    </StudyContext.Provider>
   );
 }
 
