@@ -86,7 +86,13 @@ async function callGemini(opts: { schema: z.ZodType; system: string; input: stri
       } catch (e) {
         lastError = e;
         const status = (e as { status?: number }).status;
-        if (status === 429) throw new AiRateLimitError("The free Gemini quota is used up for now — try again in a minute (or tomorrow if the daily limit is reached).");
+        if (status === 429) {
+          // Google's message names the exhausted quota (per-minute vs per-day); keep it for the logs.
+          const detail = String((e as Error).message ?? "").match(/Quota exceeded for metric: [^,\n"]+|quotaId["':\s]+[\w-]+/i)?.[0];
+          throw new AiRateLimitError(
+            `The free Gemini quota is used up for now — try again in a minute (or tomorrow if the daily limit is reached).${detail ? ` [${detail}]` : ""}`,
+          );
+        }
         if (status !== 503 && status !== 500) throw e;
         await sleep(1500 * (attempt + 1));
       }
