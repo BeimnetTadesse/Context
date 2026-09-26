@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
+/* Design tokens — taken from the Context mockups. Warm paper, ink, oxblood rubrication. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f4efe7;
+  --paper-2: #ede6db;       /* recessed bands (provenance section, key box) */
+  --card: #faf7f1;          /* raised surfaces */
+  --ink: #1f1b17;
+  --ink-2: #4a443d;
+  --muted: #7a7268;
+  --rule: #e2dace;
+  --accent: #8b3a2b;        /* oxblood */
+  --night: #1f1b18;         /* dark signature band */
+  --night-ink: #efe9df;
+
+  /* The six provenance labels */
+  --l-explicit: #4f9a5c;
+  --l-explicit-bg: #e3f0e2;
+  --l-inference: #4a8ad0;
+  --l-inference-bg: #e2ecf6;
+  --l-historical: #a765c2;
+  --l-historical-bg: #f1e5f3;
+  --l-scholarly: #b48a12;
+  --l-scholarly-bg: #f5ecd3;
+  --l-tradition: #cf6a41;
+  --l-tradition-bg: #f7e4da;
+  --l-personal: #8a847c;
+  --l-personal-bg: #ebe7e1;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-accent: var(--accent);
+  --color-night: var(--night);
+  --color-night-ink: var(--night-ink);
+
+  --font-serif: var(--font-garamond), "EB Garamond", Georgia, serif;
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-ethiopic: var(--font-ethiopic), "Noto Serif Ethiopic", serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--paper);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Small-caps monospace labels: "STEP I OF VII", "MARGIN NOTES" */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Scripture body */
+.scripture {
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  line-height: 2.05;
+  color: var(--ink);
+}
+sup.vn {
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  color: var(--muted);
+  margin-right: 0.2em;
+  vertical-align: super;
+}
+.ethiopic {
+  font-family: var(--font-ethiopic);
+  font-size: 1.15em;
+  line-height: 2.1;
+}
+
+::selection {
+  background: #e7d6c9;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
