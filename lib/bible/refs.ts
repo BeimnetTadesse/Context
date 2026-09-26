@@ -59,4 +59,4 @@ export function parseOsis(osis: string): { book: string; chapter: number; verse:
   return m ? { book: m[1], chapter: Number(m[2]), verse: Number(m[3]) } : null;
 }
 
-export const studyPath = (book: Book, chapter: number) => `/study/${book.slug}/${chapter}`;
+export const studyPath = (book: Pick<Book, "slug">, chapter: number) => `/study/${book.slug}/${chapter}`;

@@ -1,69 +1,254 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Dot, LabelPill, Wordmark } from "@/components/ui";
+import { sql } from "@/lib/db";
+import { LABEL_INFO, type Label } from "@/lib/labels";
+import { STEPS } from "@/lib/steps";
 
-export default function Home() {
+async function webVerse(osis: string, chapter: number, verse: number) {
+  const [r] = await sql<{ text: string }[]>`
+    select t.text from verses v join books b on b.id = v.book_id
+    join verse_texts t on t.ord = v.ord and t.translation_code = 'WEB'
+    where b.osis = ${osis} and v.chapter = ${chapter} and v.verse = ${verse}`;
+  return r?.text ?? "";
+}
+
+const SAYS: [string, string][] = [
+  ["Paul calls himself a prisoner on behalf of the Gentiles.", "3:1"],
+  ["The mystery was hidden for ages and is now revealed.", "3:5, 9"],
+  ["He prays they would know a love that surpasses knowledge.", "3:19"],
+];
+const BRINGS: [string, Label][] = [
+  ["He wrote from a Roman prison.", "scholarly"],
+  ["The four dimensions picture the cross.", "tradition"],
+  ["This is about my own sense of belonging.", "personal"],
+];
+const EXAMPLES: Record<Label, string> = {
+  explicit: "Paul bows his knees to the Father (3:14).",
+  inference: "Paul was physically imprisoned (3:1; 4:1; 6:20).",
+  historical: "The earliest copies omit “in Ephesus” (1:1).",
+  scholarly: "“Powers” includes social and political structures.",
+  tradition: "The four dimensions picture the cross.",
+  personal: "“I treat some people as outsiders.”",
+};
+
+export default async function Landing() {
+  const [v6, v4] = await Promise.all([webVerse("Eph", 3, 6), webVerse("Eph", 3, 4)]);
+  const [lead, compounds, rest] = splitCompounds(v6);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <div className="bg-paper">
+      <header className="border-b border-rule">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-10">
+          <Wordmark />
+          <nav className="hidden gap-10 text-[1.02rem] text-ink-2 md:flex">
+            <a href="#method" className="hover:text-ink">Method</a>
+            <a href="#provenance" className="hover:text-ink">Provenance</a>
+            <a href="#principles" className="hover:text-ink">Principles</a>
+          </nav>
+          <Link href="/study" className="rounded-xl border border-ink px-5 py-2.5 text-[1.02rem] hover:bg-ink hover:text-paper">
+            Open workspace
+          </Link>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="mx-auto grid max-w-7xl items-center gap-16 px-5 py-20 sm:px-10 lg:grid-cols-[1.1fr_1fr] lg:py-32">
+        <div>
+          <p className="eyebrow text-accent">A study workspace for Scripture</p>
+          <h1 className="mt-8 font-serif text-[3.6rem] leading-[1.02] tracking-tight sm:text-[5.6rem]">
+            Slow down.
+            <br />
+            Read deeply.
+            <br />
+            <em className="text-accent">Understand the context.</em>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-10 max-w-xl text-xl leading-relaxed text-ink-2">
+            Context takes you through a passage the way a careful reader would: the text first, then its structure,
+            history, language, and the range of credible interpretation. Every claim shows where it comes from.
+          </p>
+          <div className="mt-12 flex flex-wrap items-center gap-8">
+            <Link href="/study" className="rounded-xl bg-ink px-7 py-4 text-lg text-paper hover:bg-ink-2">
+              Choose a passage &nbsp;→
+            </Link>
+            <a href="#method" className="text-lg underline underline-offset-4">How the method works</a>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-rule bg-card p-8 shadow-[0_40px_80px_-50px_rgba(60,40,20,0.45)] sm:p-12">
+          <div className="eyebrow flex justify-between text-muted">
+            <span>Ephesians 3:6</span>
+            <span>WEB</span>
+          </div>
+          <p className="mt-8 font-serif text-[1.75rem] leading-[1.8]">
+            <sup className="mr-1 font-sans text-xs text-muted">6</sup>
+            {lead}
+            <span className="underline decoration-[var(--l-explicit)] decoration-2 underline-offset-[6px]">{compounds}</span>
+            <sup className="ml-0.5 font-sans text-xs text-accent">c</sup>
+            {rest}
+          </p>
+          <div className="mt-8 space-y-6 border-t border-rule pt-8">
+            <div className="flex gap-6">
+              <span className="font-mono text-sm text-accent">c</span>
+              <div className="space-y-4">
+                <LabelPill label="explicit" />
+                <p className="font-serif text-xl leading-snug">
+                  Three parallel compounds, each beginning with <em>syn-</em>, “together with”.
+                </p>
+                <LabelPill label="historical" />
+                <p className="font-serif text-xl leading-snug">
+                  σύσσωμος is glossed “of the same body” in Abbott-Smith’s lexicon.
+                </p>
+                <div className="flex gap-2 font-mono text-sm">
+                  <span className="rounded-md border border-rule px-2.5 py-1">[SBLGNT]</span>
+                  <span className="rounded-md border border-rule px-2.5 py-1">[Abbott-Smith]</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Signature question */}
+      <section className="bg-night text-night-ink">
+        <div className="mx-auto max-w-7xl px-5 py-28 sm:px-10">
+          <p className="eyebrow text-[#d7b8a9]">The signature question</p>
+          <h2 className="mt-6 font-serif text-5xl sm:text-7xl">Two questions, kept apart.</h2>
+          <div className="mt-16 grid gap-14 lg:grid-cols-2">
+            <Column title="What does the text actually say?">
+              {SAYS.map(([s, ref]) => (
+                <Row key={s} text={s}>
+                  <Dot label="explicit" /> <span className="font-mono text-sm text-night-ink/70">{ref}</span>
+                </Row>
+              ))}
+            </Column>
+            <Column title="What am I bringing into the text?">
+              {BRINGS.map(([s, l]) => (
+                <Row key={s} text={s}>
+                  <Dot label={l} /> <span className="eyebrow text-night-ink/70">{LABEL_INFO[l].short}</span>
+                </Row>
+              ))}
+            </Column>
+          </div>
+          <p className="mt-16 max-w-2xl text-lg leading-relaxed text-night-ink/70">
+            Highlight any phrase in the workspace and ask <span className="text-night-ink">Text or Assumption?</span>{" "}
+            Context sorts what is on the page from what readers commonly bring to it, and shows the evidence for each.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* Method */}
+      <section id="method" className="mx-auto max-w-7xl scroll-mt-10 px-5 py-28 sm:px-10">
+        <div className="flex flex-wrap items-end justify-between gap-8">
+          <div>
+            <p className="eyebrow text-accent">Method</p>
+            <h2 className="mt-5 font-serif text-5xl sm:text-6xl">Seven steps, in order.</h2>
+          </div>
+          <p className="max-w-md text-lg text-ink-2">Interpretation comes sixth. Reflection comes last. The order is the point.</p>
         </div>
-      </main>
+        <div className="mt-14 grid grid-cols-2 gap-10 border-t border-ink pt-10 sm:grid-cols-4 lg:grid-cols-7">
+          {STEPS.map((s) => (
+            <div key={s.key}>
+              <p className="font-mono text-sm text-accent">{s.numeral}</p>
+              <p className="mt-3 font-serif text-2xl">{s.name}</p>
+              <p className="mt-2 text-ink-2">{s.tagline}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Provenance */}
+      <section id="provenance" className="scroll-mt-10 bg-paper-2">
+        <div className="mx-auto grid max-w-7xl gap-16 px-5 py-28 sm:px-10 lg:grid-cols-2">
+          <div>
+            <p className="eyebrow text-accent">Provenance</p>
+            <h2 className="mt-5 font-serif text-5xl sm:text-6xl">Every claim is labelled.</h2>
+            <p className="mt-8 max-w-md text-lg leading-relaxed text-ink-2">
+              Six categories, used consistently across the workspace. The label tells you how much weight a statement
+              can bear before you decide what to do with it.
+            </p>
+          </div>
+          <ul className="divide-y divide-rule border-y border-rule">
+            {(Object.keys(EXAMPLES) as Label[]).map((l) => (
+              <li key={l} className="flex gap-5 py-6">
+                <span className="pt-2.5"><Dot label={l} size={10} /></span>
+                <div>
+                  <p>
+                    <span className="font-serif text-2xl">{LABEL_INFO[l].name}</span>
+                    <span className="ml-4 text-ink-2">{LABEL_INFO[l].meaning}</span>
+                  </p>
+                  <p className="mt-2 font-serif text-lg italic text-muted">e.g. {EXAMPLES[l]}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* Principles */}
+      <section id="principles" className="mx-auto max-w-7xl scroll-mt-10 px-5 py-28 sm:px-10">
+        <p className="eyebrow text-accent">Principles</p>
+        <h2 className="mt-5 font-serif text-5xl sm:text-6xl">A research assistant, not an authority.</h2>
+        <div className="mt-16 grid gap-12 md:grid-cols-3">
+          {[
+            ["It cites.", "Each explanation links to the text, manuscript, lexicon, or commentary it relies on. “Show me why” opens the chain."],
+            ["It shows disagreement.", "Where credible scholars differ, the main views sit side by side, with who holds them and why."],
+            ["It doesn’t speak for God.", "Context explains what the text says and how it has been read. What it means for you is left to you."],
+          ].map(([t, d]) => (
+            <div key={t} className="border-t border-ink pt-8">
+              <h3 className="font-serif text-3xl">{t}</h3>
+              <p className="mt-4 text-lg leading-relaxed text-ink-2">{d}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-28 border-t border-rule pt-24 text-center">
+          <p className="mx-auto max-w-3xl font-serif text-4xl italic leading-snug sm:text-5xl">“{trimQuote(v4)}”</p>
+          <p className="eyebrow mt-8 text-muted">Ephesians 3:4 · WEB</p>
+          <Link href="/study" className="mt-10 inline-block rounded-xl bg-ink px-7 py-4 text-lg text-paper hover:bg-ink-2">
+            Open the workspace →
+          </Link>
+        </div>
+      </section>
+
+      <footer className="border-t border-rule">
+        <div className="mx-auto max-w-7xl px-5 py-10 text-sm text-muted sm:px-10">
+          Texts: World English Bible (public domain) · Amharic Bible © 1962, 2003 United Bible Societies, used with the
+          permission terms of the Bible Society of Ethiopia · SBL Greek New Testament (CC BY 4.0) · Greek data and lexicon
+          from STEP Bible (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY).
+        </div>
+      </footer>
     </div>
   );
+}
+
+function Column({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="border-b border-night-ink/15 pb-5 font-serif text-3xl italic sm:text-4xl">{title}</h3>
+      <ul>{children}</ul>
+    </div>
+  );
+}
+
+function Row({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <li className="flex items-center justify-between gap-6 border-b border-night-ink/15 py-6 font-serif text-xl">
+      {text}
+      <span className="flex shrink-0 items-center gap-2">{children}</span>
+    </li>
+  );
+}
+
+// Underline "fellow heirs … fellow partakers" if present in the WEB text.
+function splitCompounds(v: string): [string, string, string] {
+  const start = v.indexOf("fellow heirs");
+  const endWord = "fellow partakers";
+  const end = v.indexOf(endWord);
+  if (start < 0 || end < 0) return [v, "", ""];
+  return [v.slice(0, start), v.slice(start, end + endWord.length), v.slice(end + endWord.length)];
+}
+
+function trimQuote(v: string) {
+  const i = v.indexOf("understanding");
+  return i > 0 ? v.slice(0, i + "understanding".length) + "…" : v;
 }
