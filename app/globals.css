@@ -68,8 +68,8 @@ body {
 /* Scripture body */
 .scripture {
   font-family: var(--font-serif);
-  font-size: 1.45rem;
-  line-height: 2.05;
+  font-size: clamp(1.2rem, 1.6vw, 1.38rem);
+  line-height: 2;
   color: var(--ink);
 }
 sup.vn {

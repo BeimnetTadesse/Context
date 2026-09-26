@@ -1,6 +1,60 @@
 "use client";
 
 import type { GreekWord, VerseRow } from "@/lib/data/chapter";
+import type { Label } from "@/lib/labels";
+
+export interface PhraseMark {
+  ord: number;
+  quote: string;
+  label: Label;
+  letter: string;
+}
+
+interface Range {
+  start: number;
+  end: number;
+  mark?: PhraseMark;
+}
+
+/** Split a verse into plain text, provenance underlines (with a margin letter) and word-trail highlights. */
+function Marked({ text, marks, trail }: { text: string; marks: PhraseMark[]; trail: string | null }) {
+  const lower = text.toLowerCase();
+  const ranges: Range[] = [];
+  for (const m of marks) {
+    const i = lower.indexOf(m.quote.toLowerCase());
+    if (i >= 0) ranges.push({ start: i, end: i + m.quote.length, mark: m });
+  }
+  if (trail) {
+    const re = new RegExp(`\\b${trail}\\w*`, "gi");
+    for (let m; (m = re.exec(text)); ) ranges.push({ start: m.index, end: m.index + m[0].length });
+  }
+  ranges.sort((a, b) => a.start - b.start);
+  const out: React.ReactNode[] = [];
+  let pos = 0;
+  for (const r of ranges) {
+    if (r.start < pos) continue; // overlapping: first wins
+    out.push(text.slice(pos, r.start));
+    const piece = text.slice(r.start, r.end);
+    out.push(
+      r.mark ? (
+        <span key={r.start}>
+          <span
+            className="underline decoration-2 underline-offset-[6px]"
+            style={{ textDecorationColor: `var(--l-${r.mark.label})` }}
+          >
+            {piece}
+          </span>
+          <sup className="ml-0.5 font-sans text-[0.6rem] text-accent">{r.mark.letter}</sup>
+        </span>
+      ) : (
+        <mark key={r.start} className="rounded bg-[var(--l-explicit-bg)] px-0.5 text-ink">{piece}</mark>
+      ),
+    );
+    pos = r.end;
+  }
+  out.push(text.slice(pos));
+  return <>{out}</>;
+}
 
 export type ReadMode = "web" | "amh" | "parallel" | "greek";
 
@@ -30,11 +84,15 @@ export function ReadStep({
   mode,
   selected,
   onSelectWord,
+  marks = [],
+  trail = null,
 }: {
   verses: VerseRow[];
   mode: ReadMode;
   selected: GreekWord | null;
   onSelectWord: (w: GreekWord) => void;
+  marks?: PhraseMark[];
+  trail?: string | null;
 }) {
   if (mode === "parallel") {
     return (
@@ -46,7 +104,7 @@ export function ReadStep({
         {verses.map((v) => (
           <div key={v.ord} id={`v${v.verse}`} className="grid scroll-mt-28 gap-3 py-4 sm:grid-cols-2 sm:gap-8">
             <p className="font-serif text-[1.2rem] leading-relaxed">
-              <Vn n={v.verse} /> {v.web}
+              <Vn n={v.verse} /> <Marked text={v.web} marks={marks.filter((m) => m.ord === v.ord)} trail={trail} />
             </p>
             {v.amh ? (
               <p className="ethiopic text-[1.05rem] leading-relaxed">
@@ -108,7 +166,7 @@ export function ReadStep({
             return (
               <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
                 <Vn n={v.verse} end={amh ? v.amh?.endVerse : null} />
-                {text}{" "}
+                {amh ? text : <Marked text={text} marks={marks.filter((m) => m.ord === v.ord)} trail={trail} />}{" "}
               </span>
             );
           })}
