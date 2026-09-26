@@ -22,7 +22,7 @@ Product #2 of *3 Products in 30 Days*.
 open-licensed data ──► Postgres ──► evidence pack (V: verses, L: lexicon, X: cross-refs, C: claims)
                                           │
                                           ▼
-                              Claude (structured JSON output)
+                    Gemini or Claude (JSON-schema structured output)
                                           │
                                           ▼
                       validator (lib/ai/validate.ts — pure, unit-tested)
@@ -61,7 +61,7 @@ Copyrighted scholarship (BDAG, Louw-Nida, academic commentaries) is never displa
 
 ## Stack
 
-Next.js 16 (App Router) · PostgreSQL (raw SQL via `postgres`) · Claude API (`claude-opus-5`, structured outputs, server-side refusal fallbacks) · Tailwind 4 · Vitest.
+Next.js 16 (App Router) · PostgreSQL (raw SQL via `postgres`) · Gemini API by default (`gemini-3.8-flash`, JSON-schema output, retries + fallback models; free tier) with Claude as an optional provider (`AI_PROVIDER=claude`) · Tailwind 4 · Vitest.
 
 ## Run it locally
 
@@ -69,7 +69,7 @@ Next.js 16 (App Router) · PostgreSQL (raw SQL via `postgres`) · Claude API (`c
 npm install
 npm run data:fetch      # downloads the open-licensed source files (~100 MB) into data/raw
 createdb context_dev
-cp .env.example .env.local   # set DATABASE_URL (and ANTHROPIC_API_KEY for the AI features)
+cp .env.example .env.local   # set DATABASE_URL and GEMINI_API_KEY (free at aistudio.google.com)
 npm run db:migrate
 npm run db:import       # ~5 seconds: 31k verses, 137k Greek words, 11k lexicon entries, 114k cross-refs
 npm run dev             # http://localhost:3000

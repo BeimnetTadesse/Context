@@ -1,6 +1,6 @@
 import "server-only";
 import { bookBySlug } from "@/lib/bible/books";
-import { AiRefusedError, AiUnavailableError } from "@/lib/ai/client";
+import { AiBusyError, AiRateLimitError, AiRefusedError, AiUnavailableError } from "@/lib/ai/client";
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status });
 
@@ -13,7 +13,9 @@ export function ntChapter(slug: unknown, chapter: unknown) {
 /** Turn AI failures into honest, user-facing messages. */
 export function aiError(e: unknown) {
   if (e instanceof AiUnavailableError) return json({ error: "ai_unavailable", message: e.message }, 503);
-  if (e instanceof AiRefusedError) return json({ error: "refused", message: "The assistant declined this request." }, 422);
+  if (e instanceof AiRateLimitError) return json({ error: "rate_limited", message: e.message }, 429);
+  if (e instanceof AiBusyError) return json({ error: "busy", message: e.message }, 503);
+  if (e instanceof AiRefusedError) return json({ error: "refused", message: e.message }, 422);
   console.error(e);
   return json({ error: "failed", message: e instanceof Error ? e.message : "Something went wrong." }, 500);
 }

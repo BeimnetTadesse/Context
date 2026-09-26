@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkClaim, soundsAuthoritative, type ValidationIssue } from "./validate";
+import { checkClaim, soundsAuthoritative, stripIds, type ValidationIssue } from "./validate";
 
 const pack = {
   byId: new Map<string, unknown>([
@@ -67,5 +67,13 @@ describe("soundsAuthoritative", () => {
   it("flags language that speaks for God", () => {
     expect(soundsAuthoritative("God is telling you to forgive.")).toBe(true);
     expect(soundsAuthoritative("The passage explicitly says Gentiles are fellow heirs.")).toBe(false);
+  });
+});
+
+describe("stripIds", () => {
+  it("removes evidence ids the model echoed into prose", () => {
+    expect(stripIds('Paul is "the prisoner of Christ Jesus" (V:Eph.3.1).')).toBe('Paul is "the prisoner of Christ Jesus".');
+    expect(stripIds("It is tied to his ministry (V:Eph.3.1, V:Eph.3.7, L:G3466).")).toBe("It is tied to his ministry.");
+    expect(stripIds("No ids here (3:1).")).toBe("No ids here (3:1).");
   });
 });

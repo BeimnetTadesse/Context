@@ -31,6 +31,13 @@ export interface ValidationIssue {
 
 const norm = (s: string) => s.replace(/[“”"‘’']/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
 
+/** Models sometimes echo evidence ids into prose ("… (V:Eph.3.1)"). Citations are shown separately, so strip them. */
+export const stripIds = (text: string) =>
+  text
+    .replace(/\s*[(\[]\s*(?:[VLXC]:[\w.]+(?:\s*[,;]\s*)?)+\s*[)\]]/g, "")
+    .replace(/\s+([.,;:])/g, "$1")
+    .trim();
+
 export function checkClaim(draft: DraftClaim, pack: PackLike, issues: ValidationIssue[]): CheckedClaim | null {
   const cites = [...new Set(draft.cites)];
   const unknown = cites.filter((c) => !pack.byId.has(c));
@@ -66,7 +73,7 @@ export function checkClaim(draft: DraftClaim, pack: PackLike, issues: Validation
     quote = null;
   }
 
-  return { label, statement: draft.statement.trim(), cites: known, quote, anchors };
+  return { label, statement: stripIds(draft.statement), cites: known, quote, anchors };
 }
 
 export function checkClaims(drafts: DraftClaim[], pack: PackLike, issues: ValidationIssue[]) {
