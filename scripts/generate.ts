@@ -37,36 +37,37 @@ async function main() {
   console.log(`${targets.length} chapters to prepare`);
 
   let done = 0;
-  let rateLimitsInARow = 0;
+  let quotaStop = false;
   for (const { book, chapter } of targets) {
     const label = `${book.name} ${chapter}`;
-    await beginGeneration(book.id, chapter);
-    const started = Date.now();
-    try {
-      const r = await generateChapterStudy(book, chapter);
-      done++;
-      rateLimitsInARow = 0;
-      console.log(`✓ ${label}  (${Math.round((Date.now() - started) / 1000)}s, ${r.issues} validator issues)  [${done}/${targets.length}]`);
-    } catch (e) {
-      await failGeneration(book.id, chapter, String(e));
-      if (e instanceof AiRateLimitError) {
-        rateLimitsInARow++;
-        if (rateLimitsInARow >= 3) {
-          console.log(`■ quota exhausted after ${done} chapters — run again later to continue`);
+    // Retry the SAME chapter on rate limits / overload, so no gaps are left behind.
+    for (let attempt = 1; ; attempt++) {
+      await beginGeneration(book.id, chapter);
+      const started = Date.now();
+      try {
+        const r = await generateChapterStudy(book, chapter);
+        done++;
+        console.log(`✓ ${label}  (${Math.round((Date.now() - started) / 1000)}s, ${r.issues} validator issues)  [${done}/${targets.length}]`);
+        break;
+      } catch (e) {
+        await failGeneration(book.id, chapter, String(e));
+        const transient = e instanceof AiRateLimitError || e instanceof AiBusyError;
+        if (!transient) {
+          console.log(`✗ ${label}: ${(e as Error).message}`);
           break;
         }
-        console.log(`… rate limited on ${label}, waiting 70s`);
-        await sleep(70_000);
-        continue;
+        if (attempt >= 5) {
+          quotaStop = true;
+          console.log(`■ still limited after 5 tries on ${label} — likely the daily quota. ${done} chapters done this run; run again later to continue`);
+          break;
+        }
+        const wait = 70_000 * attempt;
+        console.log(`… ${e instanceof AiRateLimitError ? "rate limited" : "Gemini busy"} on ${label}, retrying in ${wait / 1000}s`);
+        await sleep(wait);
       }
-      if (e instanceof AiBusyError) {
-        console.log(`… Gemini busy on ${label}, waiting 60s`);
-        await sleep(60_000);
-        continue;
-      }
-      console.log(`✗ ${label}: ${(e as Error).message}`);
     }
-    await sleep(4_000); // stay well under per-minute limits
+    if (quotaStop) break;
+    await sleep(20_000); // pace requests to stay under the per-minute token limit
   }
   const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from chapter_studies where status = 'ready'`;
   console.log(`done this run: ${done}. chapters ready overall: ${n}/260`);
