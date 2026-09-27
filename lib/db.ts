@@ -9,6 +9,8 @@ export const sql =
   postgres(process.env.DATABASE_URL!, {
     max: 5,
     idle_timeout: 20,
+    // Neon's pooled endpoint (PgBouncer, transaction mode) doesn't support prepared statements.
+    prepare: false,
   });
 
 if (process.env.NODE_ENV !== "production") globalForDb.sql = sql;
