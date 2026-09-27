@@ -2,15 +2,14 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Workspace } from "@/components/workspace/Workspace";
-import type { ReadMode } from "@/components/workspace/ReadStep";
 import { getChapter, getNtBooks } from "@/lib/data/chapter";
 import { getStudy } from "@/lib/data/study";
 import { sql } from "@/lib/db";
 import type { Label } from "@/lib/labels";
 import { isStepKey } from "@/lib/steps";
+import { parsePrefs } from "@/lib/versions";
 import { curatorMode, currentViewer } from "@/lib/user";
 
-const MODES: ReadMode[] = ["web", "amh", "parallel", "greek"];
 
 export async function generateMetadata(props: PageProps<"/study/[book]/[chapter]">): Promise<Metadata> {
   const { book, chapter } = await props.params;
@@ -26,7 +25,7 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
   if (!data) notFound();
 
   const study = await getStudy(data.book, data.chapter, data.verses);
-  const saved = (await cookies()).get("readMode")?.value as ReadMode | undefined;
+  const prefs = parsePrefs(decodeURIComponent((await cookies()).get("readPrefs")?.value ?? ""));
 
   // This reader's private state for the chapter.
   const [guessRows, noteRows, countRows] = userId
@@ -48,7 +47,7 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
       study={study}
       curator={curatorMode()}
       initialStep={isStepKey(step) ? step : "read"}
-      initialMode={saved && MODES.includes(saved) ? saved : "web"}
+      initialPrefs={prefs}
       noteCount={countRows[0]?.n ?? 0}
       guesses={Object.fromEntries(guessRows.map((g) => [g.item_id, g.guess]))}
       notes={noteRows.map((n) => ({ id: n.id, kind: n.kind, itemId: n.item_id, body: n.body }))}

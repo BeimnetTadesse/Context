@@ -15,7 +15,8 @@
     "study:generate": "tsx --conditions=react-server scripts/generate.ts",
     "study:smoke": "tsx --conditions=react-server scripts/smoke-study.ts",
     "data:commentaries": "tsx scripts/fetch-commentaries.ts",
-    "db:commentaries": "tsx scripts/import-commentaries.ts"
+    "db:commentaries": "tsx scripts/import-commentaries.ts",
+    "db:translations": "tsx scripts/import-translations.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

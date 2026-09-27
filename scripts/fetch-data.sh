@@ -10,4 +10,5 @@ curl -sSL -o web.zip  https://ebible.org/Scriptures/engwebp_usfm.zip
 curl -sSL -o amh.zip  https://ebible.org/Scriptures/amh_usfm.zip
 curl -sSL -o xref.zip https://a.openbible.info/data/cross-references.zip
 unzip -qo web.zip -d web && unzip -qo amh.zip -d amh && unzip -qo xref.zip -d xref
+for id in eng-kjv engbsb eng-asv engylt; do curl -sSL -o $id.zip "https://ebible.org/Scriptures/${id}_usfm.zip" && unzip -qo $id.zip -d $id; done
 echo "data ready"

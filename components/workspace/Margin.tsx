@@ -9,7 +9,7 @@ import type { GreekWord } from "@/lib/data/chapter";
 import type { ClaimView } from "@/lib/data/study";
 import type { StepKey } from "@/lib/steps";
 import { AskPanel, type AskRequest } from "./AskPanel";
-import type { ReadMode } from "./ReadStep";
+import { versionInfo, type ReadPrefs } from "@/lib/versions";
 
 interface Lexicon {
   strongs: string;
@@ -26,18 +26,19 @@ interface Cited {
   kind: string;
 }
 
-const TRANSLATION_SOURCES: Record<ReadMode, Cited[]> = {
-  web: [{ key: "WEB", title: "World English Bible", kind: "Primary text · translation" }],
-  amh: [{ key: "AMH1962", title: "Amharic Bible (1962)", kind: "Primary text · translation" }],
-  parallel: [
-    { key: "WEB", title: "World English Bible", kind: "Primary text · translation" },
-    { key: "AMH1962", title: "Amharic Bible (1962)", kind: "Primary text · translation" },
-  ],
-  greek: [
-    { key: "SBLGNT", title: "SBL Greek New Testament", kind: "Primary text · critical Greek text" },
-    { key: "STEP", title: "Translators Amalgamated Greek NT", kind: "Tagged text · Tyndale House" },
-  ],
-};
+function translationSources(p: ReadPrefs): Cited[] {
+  if (p.greek)
+    return [
+      { key: "SBLGNT", title: "SBL Greek New Testament", kind: "Primary text · critical Greek text" },
+      { key: "STEP", title: "Translators Amalgamated Greek NT", kind: "Tagged text · Tyndale House" },
+    ];
+  return [p.primary, ...p.compare].map((c) => ({
+    key: c === "AMH" ? "AMH1962" : c,
+    title: versionInfo(c).name,
+    kind: `Primary text · translation · ${c === "AMH" ? "non-commercial licence" : "public domain"}`,
+  }));
+}
+const showsAmharic = (p: ReadPrefs) => !p.greek && (p.primary === "AMH" || p.compare.includes("AMH"));
 
 const AMHARIC_NOTICE =
   "copyright © 1962, 2003 United Bible Societies. Revised Amharic Bible in XML (2003). Printed version by United Bible Societies (C)1962. E-Text in transliterated ASCII format by Lapsley/Brooks Foundation 1994. Unicode UTF-8 transformation and XML-tagging by Dirk Röckmann 2003 (www.nt-text.net). With kind permission of the Bible Society of Ethiopia. Every non-commercial work using this data in any form must fully include this copyright statement! Every commercial use of parts or the complete data in any form needs written permission of the Bible Society of Ethiopia!";
@@ -119,12 +120,12 @@ function MarginNotes({ notes }: { notes: (ClaimView & { letter: string })[] }) {
   );
 }
 
-function ReportProblem({ mode }: { mode: ReadMode }) {
+function ReportProblem({ prefs }: { prefs: ReadPrefs }) {
   const { book, chapter } = useStudy();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [done, setDone] = useState(false);
-  const translation = mode === "amh" || mode === "parallel" ? "Amharic" : mode === "greek" ? "Greek" : "English";
+  const translation = prefs.greek ? "Greek" : [prefs.primary, ...prefs.compare].map((c) => versionInfo(c).short).join(" / ");
   if (done) return <p className="text-xs text-muted">Thanks — the problem is recorded.</p>;
   return open ? (
     <form
@@ -150,7 +151,7 @@ function ReportProblem({ mode }: { mode: ReadMode }) {
 
 export function Margin({
   step,
-  mode,
+  prefs,
   word,
   onCloseWord,
   tab,
@@ -161,7 +162,7 @@ export function Margin({
   onCloseVerse,
 }: {
   step: StepKey;
-  mode: ReadMode;
+  prefs: ReadPrefs;
   word: GreekWord | null;
   onCloseWord: () => void;
   tab: "margin" | "ask";
@@ -176,7 +177,7 @@ export function Margin({
   // "Cited in this step": the translation(s) on screen, plus every source behind the claims this step shows.
   const stepClaims = step === "read" ? letters : study.claims.filter((c) => c.step === step);
   const cited = new Map<string, Cited>();
-  if (step === "read") for (const s of TRANSLATION_SOURCES[mode]) cited.set(s.key, s);
+  if (step === "read") for (const s of translationSources(prefs)) cited.set(s.key, s);
   for (const c of stepClaims) for (const s of c.citations) if (!cited.has(s.key)) cited.set(s.key, { key: s.key, title: s.title, kind: s.source_type });
   if (word) cited.set("Abbott-Smith", { key: "Abbott-Smith", title: "A Manual Greek Lexicon of the New Testament (1922)", kind: "Lexicon" });
 
@@ -205,7 +206,7 @@ export function Margin({
               <MarginNotes notes={letters} />
             ) : (
               <p className="mt-4 text-[0.95rem] leading-relaxed text-ink-2">
-                {mode === "greek"
+                {prefs.greek
                   ? "Tap any Greek word to see its dictionary form, its range of meaning, and how often it appears."
                   : "Lettered notes on key phrases appear here once this chapter’s study is prepared. Switch to Greek to explore any word."}
               </p>
@@ -229,10 +230,10 @@ export function Margin({
             {cited.size === 0 && <li className="py-3 text-sm text-muted">Nothing cited yet.</li>}
           </ul>
           <a href="/sources" className="mt-2 inline-block text-xs text-muted underline underline-offset-4 hover:text-ink">All sources →</a>
-          {step === "read" && (mode === "amh" || mode === "parallel") && (
+          {step === "read" && showsAmharic(prefs) && (
             <p className="mt-3 text-[0.7rem] leading-relaxed text-muted">{AMHARIC_NOTICE}</p>
           )}
-          {step === "read" && <div className="mt-4"><ReportProblem mode={mode} /></div>}
+          {step === "read" && <div className="mt-4"><ReportProblem prefs={prefs} /></div>}
         </div>
 
         <ProvenanceKey />

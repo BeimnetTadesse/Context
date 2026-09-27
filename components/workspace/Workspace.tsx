@@ -15,7 +15,9 @@ import { ReflectStep, type SavedNote } from "@/components/study/Reflect";
 import type { AskRequest } from "./AskPanel";
 import { Margin } from "./Margin";
 import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
-import { READ_MODES, ReadStep, type PhraseMark, type ReadMode } from "./ReadStep";
+import { ReadStep, type PhraseMark } from "./ReadStep";
+import { VersionToolbar } from "./VersionToolbar";
+import type { ReadPrefs } from "@/lib/versions";
 import { SelectionPopover } from "./SelectionPopover";
 
 const STEP_INTRO: Record<StepKey, string> = {
@@ -29,16 +31,16 @@ const STEP_INTRO: Record<StepKey, string> = {
 };
 
 
-// A cookie (not localStorage) so the server renders the reader's mode on first paint.
-function saveReadMode(m: ReadMode) {
-  document.cookie = `readMode=${m}; path=/; max-age=31536000; samesite=lax`;
+// A cookie (not localStorage) so the server renders the reader's versions on first paint.
+function saveReadPrefs(p: ReadPrefs) {
+  document.cookie = `readPrefs=${encodeURIComponent(JSON.stringify(p))}; path=/; max-age=31536000; samesite=lax`;
 }
 
 export function Workspace({
   data,
   books,
   initialStep,
-  initialMode,
+  initialPrefs,
   study,
   curator,
   noteCount: initialNoteCount,
@@ -49,7 +51,7 @@ export function Workspace({
   data: ChapterData;
   books: NtBook[];
   initialStep: StepKey;
-  initialMode: ReadMode;
+  initialPrefs: ReadPrefs;
   study: StudyData;
   curator: boolean;
   noteCount: number;
@@ -65,7 +67,7 @@ export function Workspace({
   const [askRequest, setAskRequest] = useState<AskRequest | null>(null);
   const [commentVerse, setCommentVerse] = useState<number | null>(null);
   const textRef = useRef<HTMLDivElement>(null);
-  const [mode, setMode] = useState<ReadMode>(initialMode);
+  const [prefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
   const [word, setWord] = useState<GreekWord | null>(null);
   const [switcher, setSwitcher] = useState(false);
   const [sheet, setSheet] = useState(false);
@@ -82,10 +84,10 @@ export function Workspace({
     window.scrollTo({ top: 0 });
   }, []);
 
-  const changeMode = (m: ReadMode) => {
-    setMode(m);
+  const changePrefs = (p: ReadPrefs) => {
+    setPrefs(p);
     setWord(null);
-    saveReadMode(m);
+    saveReadPrefs(p);
   };
 
   // Keyboard: ⌘K / Ctrl-K passage switcher · 1–7 jump between steps
@@ -145,7 +147,7 @@ export function Workspace({
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
   };
 
-  const translationLabel = { web: "WEB", amh: "AMH", parallel: "WEB · AMH", greek: "SBLGNT" }[mode];
+  const translationLabel = prefs.greek ? "SBLGNT" : [prefs.primary, ...prefs.compare].join(" · ");
 
   return (
     <StudyContext.Provider value={ctx}>
@@ -286,32 +288,19 @@ export function Workspace({
 
           {step === "read" ? (
             <>
-              <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-y border-rule py-3">
-                <div className="-mx-1 flex max-w-full gap-1 overflow-x-auto rounded-full bg-paper-2 p-1" role="tablist" aria-label="Translation">
-                  {READ_MODES.map((m) => (
-                    <button
-                      key={m.key}
-                      role="tab"
-                      aria-selected={mode === m.key}
-                      onClick={() => changeMode(m.key)}
-                      className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm sm:px-4 ${
-                        mode === m.key ? "bg-card text-ink shadow-sm" : "text-muted hover:text-ink"
-                      } ${m.key === "amh" ? "font-ethiopic" : ""}`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="mt-8 flex flex-wrap items-start justify-between gap-4 border-y border-rule py-3">
+                <VersionToolbar prefs={prefs} onChange={changePrefs} />
                 {(() => {
-                  const layerOn = layer && letters.length > 0 && mode !== "amh" && mode !== "greek";
+                  const layerAvailable = letters.length > 0 && prefs.primary === "WEB" && !prefs.greek;
+                  const layerOn = layer && layerAvailable;
                   return (
                 <button
                   onClick={() => setLayer(!layer)}
-                  disabled={letters.length === 0 || mode === "amh" || mode === "greek"}
+                  disabled={!layerAvailable}
                   role="switch"
                   aria-checked={layerOn}
                   className="flex items-center gap-3 text-sm disabled:cursor-not-allowed disabled:text-muted"
-                  title={letters.length ? "Underline key phrases by provenance label" : "Appears once this chapter's study is prepared"}
+                  title={!letters.length ? "Appears once this chapter's study is prepared" : prefs.primary !== "WEB" ? "Underlines follow the WEB wording — choose WEB as your main version" : "Underline key phrases by provenance label"}
                 >
                   <span className={`relative h-6 w-11 rounded-full transition ${layerOn ? "bg-ink" : "bg-rule"}`}>
                     <span className={`absolute top-1 h-4 w-4 rounded-full bg-card transition-all ${layerOn ? "left-6" : "left-1"}`} />
@@ -321,11 +310,11 @@ export function Workspace({
                   );
                 })()}
               </div>
-              {mode !== "greek" && (
+              {!prefs.greek && (
                 <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Tap a verse number for the commentators · Select any phrase to ask</p>
               )}
               <div className="mt-8" ref={textRef}>
-                <ReadStep verses={data.verses} mode={mode} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} />
+                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} />
               </div>
               <SelectionPopover
                 container={textRef}
@@ -378,7 +367,7 @@ export function Workspace({
         >
           <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-rule lg:hidden" />
           <div className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:pb-8">
-            <Margin step={step} mode={mode} word={word} onCloseWord={() => setWord(null)} tab={tab} setTab={setTab} askRequest={askRequest} letters={letters} commentVerse={step === "read" ? commentVerse : null} onCloseVerse={() => setCommentVerse(null)} />
+            <Margin step={step} prefs={prefs} word={word} onCloseWord={() => setWord(null)} tab={tab} setTab={setTab} askRequest={askRequest} letters={letters} commentVerse={step === "read" ? commentVerse : null} onCloseVerse={() => setCommentVerse(null)} />
           </div>
         </aside>
       </div>

@@ -7,7 +7,9 @@ config({ path: ".env.local" });
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";
-import { BOOKS, bookByOsis, bookByStep, bookByUsfm } from "../lib/bible/books";
+import { BOOKS, bookByOsis, bookByStep } from "../lib/bible/books";
+import { toWeb } from "../lib/bible/versification";
+import { parseUsfm } from "../lib/bible/usfm";
 
 const sql = postgres(process.env.DATABASE_URL!, { onnotice: () => {}, max: 1 });
 const RAW = join(process.cwd(), "data/raw");
@@ -48,6 +50,16 @@ const SOURCES = [
     source_type: "Lexicon", orientation: "academic",
     license: "Public domain text; STEP edition CC BY 4.0", can_display: true,
   },
+  ...[
+    ["KJV", "King James Version", "1611 (1769 Blayney edition)", "eng-kjv", "Anglican, Textus Receptus"],
+    ["BSB", "Berean Standard Bible", "2016–2023", "engbsb", "evangelical, modern formal-functional"],
+    ["ASV", "American Standard Version", "1901", "eng-asv", "Revised Version tradition, very literal"],
+    ["YLT", "Young's Literal Translation", "1862 (rev. 1898)", "engylt", "hyper-literal, Textus Receptus"],
+  ].map(([key, title, year, id, orientation]) => ({
+    key, title, publisher: "eBible.org", year, url: `https://ebible.org/find/details.php?id=${id}`, tier: 1,
+    source_type: "Primary text · translation", orientation, license: "Public domain", can_display: true,
+    notes: key === "KJV" ? "Public domain outside the UK; in the UK printing is under Crown letters patent." : null,
+  })),
   {
     key: "OpenBible", title: "Bible cross-references", publisher: "OpenBible.info", year: "2026",
     url: "https://www.openbible.info/labs/cross-references/", tier: 4,
@@ -56,65 +68,6 @@ const SOURCES = [
   },
 ];
 
-// ─── USFM → verses ───
-// Strips word-level markup (\w word|strong="G…"\w*), footnotes (\f … \f*), cross-refs (\x … \x*),
-// and character styles, keeping only the readable text. Tracks paragraph starts for layout.
-interface UsfmVerse { book: number; chapter: number; verse: number; verseEnd?: number; text: string; para: boolean }
-
-function parseUsfm(path: string): UsfmVerse[] {
-  const src = readFileSync(path, "utf8");
-  const id = /\\id\s+(\w{3})/.exec(src)?.[1];
-  const book = id ? bookByUsfm(id) : undefined;
-  if (!book) return [];
-
-  const out: UsfmVerse[] = [];
-  let chapter = 0;
-  let pendingPara = false;
-  let cur: UsfmVerse | null = null;
-
-  const clean = (s: string) =>
-    s
-      .replace(/\\f\s.*?\\f\*/g, "")
-      .replace(/\\x\s.*?\\x\*/g, "")
-      .replace(/\\\+?w\s+([^|\\]*?)(\|[^\\]*)?\\\+?w\*/g, "$1")
-      .replace(/\\\+?[a-z]+\d*\*?/g, "")
-      .replace(/\s+/g, " ");
-
-  for (const line of src.split(/\r?\n/)) {
-    const marker = /^\\(\w+\d*)\s?(.*)$/.exec(line.trim());
-    if (!marker) {
-      if (cur && line.trim()) cur.text += " " + clean(line);
-      continue;
-    }
-    const [, tag, rest] = marker;
-    if (tag === "c") {
-      chapter = Number(rest.trim());
-      cur = null;
-      continue;
-    }
-    if (["p", "m", "pi", "pi1", "pi2", "q", "q1", "q2", "q3", "nb", "li", "li1", "li2", "b", "pmo", "mi"].includes(tag)) {
-      pendingPara = pendingPara || tag !== "nb";
-      if (rest && cur) cur.text += " " + clean(rest);
-      continue;
-    }
-    if (tag === "v") {
-      const vm = /^(\d+)(?:-(\d+))?\s*(.*)$/.exec(rest);
-      if (!vm || !chapter) continue;
-      cur = {
-        book: book.id, chapter, verse: Number(vm[1]),
-        verseEnd: vm[2] ? Number(vm[2]) : undefined,
-        text: clean(vm[3]), para: pendingPara,
-      };
-      pendingPara = false;
-      out.push(cur);
-      continue;
-    }
-    // headings, titles, etc. (\s, \d, \mt, \h, \toc …) are not verse text
-  }
-  for (const v of out) v.text = v.text.replace(/\s+([,.;:!?’”»])/g, "$1").trim();
-  return out;
-}
-
 async function bulk<T extends Record<string, unknown>>(table: string, rows: T[], size = 4000) {
   for (let i = 0; i < rows.length; i += size) {
     await sql`insert into ${sql(table)} ${sql(rows.slice(i, i + size) as never)}`;
@@ -122,6 +75,17 @@ async function bulk<T extends Record<string, unknown>>(table: string, rows: T[],
 }
 
 async function main() {
+  // Safety: this script rebuilds the TEXT tables with TRUNCATE … CASCADE, which also removes every
+  // prepared study and commentary that references them. Refuse unless explicitly forced.
+  const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from information_schema.tables where table_name = 'claims'`;
+  if (n) {
+    const [{ c }] = await sql<{ c: number }[]>`select count(*)::int as c from claims`;
+    if (c > 0 && process.env.FORCE_REBUILD !== "1") {
+      console.error(`Refusing: ${c} claims exist and would be deleted. Use npm run db:translations to add versions,\nor FORCE_REBUILD=1 npm run db:import to rebuild everything from scratch.`);
+      await sql.end();
+      process.exit(1);
+    }
+  }
   console.time("import");
   await sql`truncate verse_texts, greek_words, cross_refs, lemmas, translations, verses, books, sources restart identity cascade`;
 
@@ -132,6 +96,10 @@ async function main() {
     { code: "WEB", name: "World English Bible", language: "en", source_id: sid.WEB },
     { code: "AMH", name: "Amharic 1962", language: "am", source_id: sid.AMH1962 },
     { code: "SBLGNT", name: "SBL Greek New Testament", language: "grc", source_id: sid.SBLGNT },
+    { code: "BSB", name: "Berean Standard Bible", language: "en", source_id: sid.BSB },
+    { code: "KJV", name: "King James Version", language: "en", source_id: sid.KJV },
+    { code: "ASV", name: "American Standard Version", language: "en", source_id: sid.ASV },
+    { code: "YLT", name: "Young's Literal Translation", language: "en", source_id: sid.YLT },
   ])}`;
 
   // Verses: WEB defines our versification. Ordinals assigned in canon order.
@@ -167,6 +135,26 @@ async function main() {
   }
   await bulk("verse_texts", amhRows);
   console.log(`AMH: ${amhRows.length} verse rows (${amhRows.filter((r) => r.end_ord).length} merged ranges)`);
+
+  // Other public-domain English translations (NT). Standard numbering is mapped to WEB's where they differ.
+  for (const [code, dirName] of [["BSB", "engbsb"], ["KJV", "eng-kjv"], ["ASV", "eng-asv"], ["YLT", "engylt"]] as const) {
+    const dir = join(RAW, dirName);
+    const rows: { translation_code: string; ord: number; end_ord: null; text: string; para: boolean }[] = [];
+    const seen = new Set<number>();
+    for (const f of readdirSync(dir).filter((f) => f.endsWith(".usfm"))) {
+      for (const v of parseUsfm(join(dir, f))) {
+        const book = BOOKS.find((b) => b.id === v.book)!;
+        if (book.testament !== "NT" || !v.text) continue;
+        const w = toWeb(book.osis, v.chapter, v.verse);
+        const ord = ordOf.get(key(v.book, w.chapter, w.verse));
+        if (!ord || seen.has(ord)) { warnings.push(`${code} verse not placed: ${book.osis} ${v.chapter}:${v.verse}`); continue; }
+        seen.add(ord);
+        rows.push({ translation_code: code, ord, end_ord: null, text: v.text, para: v.para });
+      }
+    }
+    await bulk("verse_texts", rows);
+    console.log(`${code}: ${rows.length} NT verses`);
+  }
 
   // Lexicon (Abbott-Smith via TBESG). Keyed by the disambiguated Strong's number that TAGNT uses.
   const lemmas = new Map<string, Record<string, unknown>>();

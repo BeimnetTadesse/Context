@@ -18,6 +18,8 @@ export interface VerseRow {
   para: boolean;
   web: string;
   amh: { text: string; endVerse: number | null } | null; // null = covered by a merged range above
+  /** Other English versions by code (BSB, KJV, ASV, YLT); missing key = the version omits this verse. */
+  texts: Record<string, string>;
   greek: GreekWord[];
 }
 
@@ -58,6 +60,13 @@ export const getChapter = cache(async (slug: string, chapter: number): Promise<C
     from greek_words g
     where g.ord between ${rows[0].ord} and ${rows[rows.length - 1].ord}
     order by g.ord, g.position`;
+  const others = await sql<{ ord: number; code: string; text: string }[]>`
+    select ord, translation_code as code, text from verse_texts
+    where ord between ${rows[0].ord} and ${rows[rows.length - 1].ord}
+      and translation_code in ('BSB', 'KJV', 'ASV', 'YLT')`;
+  const textsByOrd = new Map<number, Record<string, string>>();
+  for (const o of others) textsByOrd.set(o.ord, { ...(textsByOrd.get(o.ord) ?? {}), [o.code]: o.text });
+
   const byOrd = new Map<number, GreekWord[]>();
   for (const { ord, ...w } of words) byOrd.set(ord, [...(byOrd.get(ord) ?? []), w]);
 
@@ -67,6 +76,7 @@ export const getChapter = cache(async (slug: string, chapter: number): Promise<C
     para: r.para,
     web: r.web,
     amh: r.amh ? { text: r.amh, endVerse: r.amh_end } : null,
+    texts: { ...(textsByOrd.get(r.ord) ?? {}), ...(r.web ? { WEB: r.web } : {}) },
     greek: byOrd.get(r.ord) ?? [],
   }));
 
