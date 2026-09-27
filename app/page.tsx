@@ -215,7 +215,8 @@ export default async function Landing() {
           Texts: World English Bible (public domain) · Amharic Bible © 1962, 2003 United Bible Societies, used with the
           permission terms of the Bible Society of Ethiopia · SBL Greek New Testament (CC BY 4.0) · Greek data and lexicon
           from STEP Bible (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY).{" "}
-          <Link href="/sources" className="underline underline-offset-4 hover:text-ink">Source library →</Link>
+          <Link href="/sources" className="underline underline-offset-4 hover:text-ink">Source library →</Link> ·{" "}
+          <Link href="/audit" className="underline underline-offset-4 hover:text-ink">How references are checked →</Link>
         </div>
       </footer>
     </div>

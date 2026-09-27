@@ -12,13 +12,15 @@ async function main() {
   const { parseRef } = await import("../lib/bible/refs");
   const { NT_BOOKS } = await import("../lib/bible/books");
   const { generateChapterStudy, beginGeneration, failGeneration } = await import("../lib/study/generate");
-  const { AiRateLimitError, AiBusyError } = await import("../lib/ai/client");
+  const { AiRateLimitError, AiBusyError, PROMPT_VERSION } = await import("../lib/ai/client");
   const { sql } = await import("../lib/db");
 
   let targets: { book: (typeof NT_BOOKS)[number]; chapter: number }[] = [];
   if (process.argv.includes("--all")) {
     const counts = await sql<{ id: number; chapter_count: number }[]>`select id, chapter_count from books where testament = 'NT' order by id`;
-    const ready = new Set((await sql<{ k: string }[]>`select book_id || '.' || chapter as k from chapter_studies where status = 'ready'`).map((r) => r.k));
+    // "Up to date" = ready AND written with the current prompt version. Everything else is (re)prepared,
+    // so a changed prompt reaches every chapter and an interrupted run resumes where it stopped.
+    const ready = new Set((await sql<{ k: string }[]>`select book_id || '.' || chapter as k from chapter_studies where status = 'ready' and prompt_version = ${PROMPT_VERSION}`).map((r) => r.k));
     for (const b of NT_BOOKS) {
       const n = counts.find((c) => c.id === b.id)?.chapter_count ?? 0;
       for (let c = 1; c <= n; c++) if (!ready.has(`${b.id}.${c}`)) targets.push({ book: b, chapter: c });
@@ -31,7 +33,7 @@ async function main() {
     }
   }
   if (process.env.FORCE !== "1") {
-    const ready = new Set((await sql<{ k: string }[]>`select book_id || '.' || chapter as k from chapter_studies where status = 'ready'`).map((r) => r.k));
+    const ready = new Set((await sql<{ k: string }[]>`select book_id || '.' || chapter as k from chapter_studies where status = 'ready' and prompt_version = ${PROMPT_VERSION}`).map((r) => r.k));
     targets = targets.filter((t) => !ready.has(`${t.book.id}.${t.chapter}`));
   }
   console.log(`${targets.length} chapters to prepare`);

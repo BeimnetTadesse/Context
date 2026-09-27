@@ -27,7 +27,7 @@ export const currentModel = () => {
   const p = provider();
   return p ? MODELS[p] : null;
 };
-export const PROMPT_VERSION = "2026-09-27.2";
+export const PROMPT_VERSION = "2026-09-28.1"; // commentators as evidence + second reader
 
 export const aiConfigured = () => provider() !== null;
 
