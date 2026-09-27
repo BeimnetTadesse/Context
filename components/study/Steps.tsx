@@ -8,6 +8,7 @@ import type { VerseRow } from "@/lib/data/chapter";
 import { ClaimCard, StatusMark, WhyDrawer } from "./Claim";
 import { useStudy } from "./context";
 import { PrepareStudy } from "./PrepareStudy";
+import { ReceptionTimeline } from "./Commentators";
 
 const Eyebrow = ({ children }: { children: React.ReactNode }) => <p className="eyebrow mb-4 mt-12 text-muted">{children}</p>;
 const SECTION_COLORS = ["var(--accent)", "#cbbfae", "#9d4b3a", "var(--ink)", "#b9a58c", "#6d5b4b"];
@@ -137,12 +138,49 @@ export function ContextStep({ chapterCount }: { chapterCount: number }) {
           </section>
         ))
       )}
+      {study.intros.length > 0 && <BookIntros />}
+
       <p className="mt-8 rounded-xl bg-paper-2 px-4 py-3 text-sm leading-relaxed text-ink-2">
         <span className="eyebrow mr-2 !text-[0.62rem] text-accent">Research note</span>
         Historical questions such as authorship and date depend on scholarship that is not yet in Context’s source library.
         Where the assistant mentions them, they are labelled as views and stay unverified until a scholarly source is attached.
       </p>
     </>
+  );
+}
+
+function BookIntros() {
+  const { book, study } = useStudy();
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <section className="mt-14">
+      <h2 className="flex items-baseline gap-3 border-b border-rule pb-3 font-serif text-3xl">
+        <span className="font-mono text-xs text-accent">∗</span>Introducing {book.name}
+      </h2>
+      <p className="mt-3 text-sm text-muted">What named commentators say about the book as a whole. Their views, labelled with their tradition.</p>
+      <div className="mt-4 space-y-3">
+        {study.intros.map((i) => {
+          const long = i.text.length > 900;
+          const shown = open === i.key || !long ? i.text : i.text.slice(0, 900).replace(/\s+\S*$/, "") + "…";
+          return (
+            <article key={i.key} className="rounded-2xl border border-rule bg-card p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-serif text-xl">{i.author}</p>
+                <p className="font-mono text-xs text-accent">{i.written}</p>
+              </div>
+              <p className="text-sm text-muted"><span className="italic">{i.title}</span> · {i.tradition}</p>
+              <p className="mt-3 whitespace-pre-line font-serif text-[1.02rem] leading-relaxed text-ink-2">{shown}</p>
+              {long && (
+                <button onClick={() => setOpen(open === i.key ? null : i.key)} className="mt-1 text-sm text-accent hover:underline">
+                  {open === i.key ? "Show less" : "Read the full introduction"}
+                </button>
+              )}
+              <p className="mt-3 border-t border-rule pt-2 font-mono text-[0.65rem] text-muted">[{i.key}] {i.license}</p>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -233,8 +271,9 @@ export function ConnectionsStep() {
 }
 
 // ── VI Interpretations ──
-export function InterpretationsStep() {
+export function InterpretationsStep({ verses }: { verses: number[] }) {
   const { study } = useStudy();
+  const firstRange = study.interpretations[0]?.range.match(/:(\d+)/)?.[1];
   return (
     <>
       <p className="mt-8 rounded-xl border border-dashed border-rule px-5 py-4 text-[0.95rem] leading-relaxed text-ink-2">
@@ -265,6 +304,7 @@ export function InterpretationsStep() {
           </div>
         </section>
       ))}
+      <ReceptionTimeline verses={verses} initial={firstRange ? Number(firstRange) : verses[0]} />
     </>
   );
 }
@@ -277,6 +317,12 @@ function ViewCard({ view }: { view: { label: string; holders: string | null; tit
         {view.label}
         {view.holders ? ` · ${view.holders}` : ""}
       </p>
+      {(() => {
+        const voices = [...new Map(view.claims.flatMap((c) => c.citations).filter((c) => c.quote).map((c) => [c.key, c])).values()];
+        return voices.length ? (
+          <p className="mt-1 text-xs text-muted">Cited: {voices.map((v) => `${v.key}${v.written ? ` (${v.written.slice(0, 4)})` : ""}`).join(" · ")}</p>
+        ) : null;
+      })()}
       <h3 className="mt-2 border-b border-rule pb-4 font-serif text-2xl leading-snug">{view.title}</h3>
       {view.claims.map((c) => (
         <div key={c.id} className="mt-4">

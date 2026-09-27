@@ -13,6 +13,7 @@ const Claim = z.object({
   statement: z.string(),
   cites: z.array(z.string()).describe("evidence ids, e.g. V:Eph.3.6, L:G3466, X:123"),
   quote: z.string().nullable().describe("exact words from the cited WEB verse this claim is about, or null"),
+  excerpt: z.string().nullable().describe("REQUIRED when citing a K: commentary id: the commentator's exact words (copied, 5–30 words) that support the claim; otherwise null"),
 });
 
 const StudySchema = z.object({
@@ -52,10 +53,15 @@ const SYSTEM = `You are the research assistant inside Context, a Bible study wor
 
 You will receive an evidence pack. Every statement you make must cite evidence ids from that pack and nothing else. You have no other sources: do not name commentators, scholars, dictionaries, manuscripts, or books that are not in the pack, and do not quote Scripture except by citing verse ids.
 
+The pack includes excerpts from named commentators (K: ids): John Calvin (Reformed, 16th c.), Matthew Henry (devotional, 18th c.), John Gill (Particular Baptist, 18th c.), Adam Clarke (Methodist/Arminian, 19th c.), Jamieson-Fausset-Brown (Scottish evangelical, 1871) and the Tyndale Open Study Notes (modern evangelical). Use them:
+- When you report how someone reads the passage, name the commentator ("Calvin reads…", "Clarke, from the Arminian side, argues…"), cite their K: id, and put their exact words (copied, not paraphrased) in "excerpt". A claim that cites a K: id without the exact words loses that citation.
+- Interpretation views should be anchored in commentators who actually hold them. Where the commentators disagree, show that. Where they agree, say so in common ground. These are all Protestant voices; do not present them as "the Christian view".
+- Historical or background claims may cite academic commentators (Calvin, Gill, Clarke, JFB, Tyndale) — as their view, with the excerpt. Never present a commentator's historical claim as settled fact; label it scholarly unless it is lexical.
+
 Label every claim with exactly one of:
 - explicit: the words are on the page (cite the verse).
 - inference: follows closely from the text but is not stated.
-- historical: from lexical or ancient-source evidence (cite an L: id). If you lack such evidence, do not make the claim.
+- historical: from lexical, historical or ancient-source evidence (cite an L: id, or an academic commentator's K: id with its excerpt). If you lack such evidence, do not make the claim.
 - scholarly: a reasoned reading that others dispute. Phrase it as a view ("One reading holds…"), never as fact.
 - tradition: a belief handed down in a church tradition, not derived from this passage. Name the tradition generically.
 - personal: something a reader brings to the text.
@@ -72,7 +78,7 @@ Rules:
 - Be concise: one or two sentences per claim.`;
 
 export async function generateChapterStudy(book: Book, chapter: number) {
-  const pack = await chapterEvidence(book, chapter, { lexicon: 20, xrefs: 30, claims: true });
+  const pack = await chapterEvidence(book, chapter, { lexicon: 20, xrefs: 30, claims: true, commentary: 24000 });
   const input = `Chapter: ${book.name} ${chapter} (World English Bible, with SBL Greek).\n\n<evidence_pack>\n${renderEvidence(pack)}\n</evidence_pack>\n\nPrepare the study for this chapter.`;
 
   const { output, runId } = await generateStructured({
@@ -88,7 +94,74 @@ export async function generateChapterStudy(book: Book, chapter: number) {
   const issues: ValidationIssue[] = [];
   await saveStudy(book, chapter, output, pack, issues);
   await recordValidation(runId, { issues });
-  return { issues: issues.length, runId };
+  const review = await reviewChapter(book, chapter, pack);
+  await sql`update chapter_studies set audit = ${sql.json({ validatorIssues: issues.length, ...review } as never)}
+            where book_id = ${book.id} and chapter = ${chapter}`;
+  return { issues: issues.length, runId, review };
+}
+
+// ── Second reader: check every saved claim against the evidence it cites ──
+const ReviewSchema = z.object({
+  verdicts: z.array(
+    z.object({
+      claim: z.number().describe("the claim number"),
+      verdict: z.enum(["supported", "partial", "unsupported"]),
+      reason: z.string().describe("one sentence: what in the evidence does or does not support it"),
+    }),
+  ),
+});
+
+const REVIEW_SYSTEM = `You are an independent second reader checking a Bible study for accuracy. For each numbered claim you get its label and the exact evidence it cites (verse text, lexicon entry, cross-reference, or a commentator's words).
+
+Judge ONLY whether the cited evidence supports the claim as worded:
+- supported: the evidence clearly supports the claim and its label (e.g. "explicit" claims are really stated in the verse; a claim attributed to a commentator matches what that commentator says).
+- partial: broadly right but overstated, imprecise, or the label is too strong (e.g. an inference labelled explicit).
+- unsupported: the evidence does not say this, the claim misattributes a view, or it adds facts not in the evidence.
+Be strict but fair. Do not use outside knowledge to rescue a claim; do not penalise a claim for being modest.`;
+
+export async function reviewChapter(book: Book, chapter: number, pack: EvidencePack) {
+  const claims = await sql<{ id: number; label: string; statement: string; step: string; cites: { kind: string; locator: string | null; quote: string | null; key: string }[] }[]>`
+    select c.id, c.label, c.statement, c.step,
+           coalesce(json_agg(json_build_object('kind', s.source_type, 'locator', ci.locator, 'quote', ci.quote, 'key', s.key)) filter (where ci.id is not null), '[]') as cites
+    from claims c left join citations ci on ci.claim_id = c.id left join sources s on s.id = ci.source_id
+    where c.book_id = ${book.id} and c.chapter = ${chapter} and c.origin = 'ai_draft' and c.status = 'unverified'
+    group by c.id order by c.id`;
+  if (!claims.length) return { reviewed: 0, supported: 0, partial: 0, unsupported: 0 };
+
+  // Re-assemble each claim's evidence text from the pack (verses by locator; commentators by their quoted words).
+  const verseByRef = new Map<string, string>();
+  for (const i of pack.items) if (i.kind === "verse") verseByRef.set(i.id.replace(/^V:\w+\.(\d+)\.(\d+)$/, `${book.name} $1:$2`), i.text.split("  [")[0]);
+  const lexByStrongs = new Map(pack.items.filter((i) => i.kind === "lexicon").map((i) => [i.id.slice(2), i.text.slice(0, 400)]));
+  const lines = claims.map((c, n) => {
+    const ev = c.cites.map((x) => {
+      if (x.key === "WEB") return `  - verse ${x.locator}: "${verseByRef.get(x.locator ?? "") ?? "?"}"`;
+      if (x.key === "Abbott-Smith") return `  - lexicon ${x.locator}: ${lexByStrongs.get(x.locator ?? "") ?? "?"}`;
+      if (x.key === "OpenBible") return `  - cross-reference: ${x.locator}`;
+      return `  - ${x.key} ${x.locator ?? ""}: "${x.quote ?? "(no quoted words)"}"`;
+    });
+    return `${n + 1}. [${c.label}] ${c.statement}\n${ev.join("\n")}`;
+  });
+
+  const { output, runId } = await generateStructured({
+    kind: "review",
+    schema: ReviewSchema,
+    system: REVIEW_SYSTEM,
+    input: `Study of ${book.name} ${chapter}. Review each claim against its cited evidence.\n\n${lines.join("\n\n")}`,
+    effort: "medium",
+    maxTokens: 16000,
+    audit: { bookId: book.id, chapter },
+  });
+
+  const counts = { reviewed: 0, supported: 0, partial: 0, unsupported: 0 };
+  for (const v of output.verdicts) {
+    const c = claims[v.claim - 1];
+    if (!c) continue;
+    await sql`update claims set review = ${v.verdict}, review_note = ${stripIds(v.reason)}, reviewed_at = now() where id = ${c.id}`;
+    counts.reviewed++;
+    counts[v.verdict]++;
+  }
+  await recordValidation(runId, counts);
+  return counts;
 }
 
 // ── Validate + write (one transaction; replaces the previous unverified draft) ──
@@ -128,11 +201,18 @@ export async function saveStudy(book: Book, chapter: number, s: Study, pack: Evi
       for (const cite of c.cites) {
         const [kind, ref] = [cite.slice(0, 1), cite.slice(2)];
         const item = pack.byId.get(cite);
-        const source = kind === "V" ? src.WEB : kind === "L" ? src["Abbott-Smith"] : kind === "X" ? src.OpenBible : null;
+        const source =
+          kind === "V" ? src.WEB : kind === "L" ? src["Abbott-Smith"] : kind === "X" ? src.OpenBible
+          : kind === "K" ? src[String(item?.meta?.key)] : null;
         if (!source) continue; // C: ids link claims to claims; the chain continues through that claim's own citations
         const locator =
-          kind === "V" ? ref.replace(/^(\w+)\.(\d+)\.(\d+)$/, `${book.name} $2:$3`) : kind === "L" ? ref : String(item?.meta?.ref ?? ref);
-        await tx`insert into citations (claim_id, source_id, locator) values (${row.id}, ${source}, ${locator})`;
+          kind === "V" ? ref.replace(/^(\w+)\.(\d+)\.(\d+)$/, `${book.name} $2:$3`)
+          : kind === "L" ? ref
+          : kind === "K" ? `${book.name} ${String(item?.meta?.range ?? "").replace(/^on /, "")}`
+          : String(item?.meta?.ref ?? ref);
+        // A commentator citation carries the commentator's exact words (verified by the validator).
+        const quote = kind === "K" ? c.excerpts[cite] ?? null : null;
+        await tx`insert into citations (claim_id, source_id, locator, quote) values (${row.id}, ${source}, ${locator}, ${quote})`;
       }
       return row.id;
     };

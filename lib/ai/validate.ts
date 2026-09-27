@@ -11,6 +11,10 @@ export interface PackLike {
   byId: Map<string, unknown>;
   verseText: Map<number, string>;
   ordById: Map<string, number>;
+  /** Commentary excerpts (K: ids) → their text, for checking quoted words. */
+  commentaryText?: Map<string, string>;
+  /** K: ids from academic commentators (tier 2–4) that may support "historical" claims. */
+  academic?: Set<string>;
 }
 
 export interface DraftClaim {
@@ -18,10 +22,14 @@ export interface DraftClaim {
   statement: string;
   cites: string[];
   quote?: string | null;
+  /** Exact words from a cited commentary excerpt (required whenever a K: id is cited). */
+  excerpt?: string | null;
 }
 
 export interface CheckedClaim extends DraftClaim {
   anchors: { ord: number; quote: string | null }[];
+  /** K: id → the verified excerpt shown with that citation. */
+  excerpts: Record<string, string>;
 }
 
 export interface ValidationIssue {
@@ -42,7 +50,22 @@ export function checkClaim(draft: DraftClaim, pack: PackLike, issues: Validation
   const cites = [...new Set(draft.cites)];
   const unknown = cites.filter((c) => !pack.byId.has(c));
   if (unknown.length) issues.push({ statement: draft.statement, problem: `removed unknown citations: ${unknown.join(", ")}` });
-  const known = cites.filter((c) => pack.byId.has(c));
+  let known = cites.filter((c) => pack.byId.has(c));
+
+  // Commentary citations must carry the commentator's exact words, or the attribution is removed.
+  const excerpts: Record<string, string> = {};
+  const kCites = known.filter((c) => c.startsWith("K:"));
+  if (kCites.length) {
+    const words = draft.excerpt?.trim();
+    const holder = words ? kCites.find((k) => norm(pack.commentaryText?.get(k) ?? "").includes(norm(words))) : undefined;
+    if (holder && words && words.length >= 12) {
+      excerpts[holder] = words;
+      known = known.filter((c) => !c.startsWith("K:") || c === holder);
+    } else {
+      issues.push({ statement: draft.statement, problem: `commentary citation removed: excerpt ${words ? "not found word-for-word" : "missing"}` });
+      known = known.filter((c) => !c.startsWith("K:"));
+    }
+  }
 
   if (known.length === 0) {
     issues.push({ statement: draft.statement, problem: "dropped: no valid citation" });
@@ -55,7 +78,7 @@ export function checkClaim(draft: DraftClaim, pack: PackLike, issues: Validation
     issues.push({ statement: draft.statement, problem: "explicit without a verse citation → inference" });
     label = "inference";
   }
-  if (label === "historical" && !known.some((c) => c.startsWith("L:"))) {
+  if (label === "historical" && !known.some((c) => c.startsWith("L:") || pack.academic?.has(c))) {
     issues.push({ statement: draft.statement, problem: "dropped: historical claim without lexical/historical evidence" });
     return null;
   }
@@ -73,7 +96,7 @@ export function checkClaim(draft: DraftClaim, pack: PackLike, issues: Validation
     quote = null;
   }
 
-  return { label, statement: stripIds(draft.statement), cites: known, quote, anchors };
+  return { label, statement: stripIds(draft.statement), cites: known, quote, anchors, excerpts };
 }
 
 export function checkClaims(drafts: DraftClaim[], pack: PackLike, issues: ValidationIssue[]) {

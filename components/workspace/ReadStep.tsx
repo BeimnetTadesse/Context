@@ -75,8 +75,30 @@ function paragraphs(verses: VerseRow[]) {
   return out;
 }
 
-function Vn({ n, end }: { n: number; end?: number | null }) {
-  return <sup className="vn">{end && end !== n ? `${n}–${end}` : n}</sup>;
+function Vn({ n, end, onVerse, active }: { n: number; end?: number | null; onVerse?: (v: number) => void; active?: boolean }) {
+  const label = end && end !== n ? `${n}–${end}` : n;
+  if (!onVerse) return <sup className="vn">{label}</sup>;
+  return (
+    <sup className="vn">
+      <button
+        type="button"
+        onClick={() => onVerse(n)}
+        title={`Commentators on verse ${n}`}
+        className={`rounded px-0.5 transition hover:bg-[var(--l-scholarly-bg)] hover:text-ink ${active ? "bg-[var(--l-scholarly-bg)] text-ink" : ""}`}
+      >
+        {label}
+      </button>
+    </sup>
+  );
+}
+
+/** WEB leaves some verse numbers empty: they appear only in later manuscripts. Say so. */
+function Omitted() {
+  return (
+    <span className="font-sans text-[0.8rem] italic text-muted" title="Textual variant">
+      [not in the earliest manuscripts; this translation omits the verse]
+    </span>
+  );
 }
 
 export function ReadStep({
@@ -86,6 +108,8 @@ export function ReadStep({
   onSelectWord,
   marks = [],
   trail = null,
+  onVerse,
+  activeVerse = null,
 }: {
   verses: VerseRow[];
   mode: ReadMode;
@@ -93,6 +117,8 @@ export function ReadStep({
   onSelectWord: (w: GreekWord) => void;
   marks?: PhraseMark[];
   trail?: string | null;
+  onVerse?: (v: number) => void;
+  activeVerse?: number | null;
 }) {
   if (mode === "parallel") {
     return (
@@ -104,7 +130,7 @@ export function ReadStep({
         {verses.map((v) => (
           <div key={v.ord} id={`v${v.verse}`} className="grid scroll-mt-28 gap-3 py-4 sm:grid-cols-2 sm:gap-8">
             <p className="font-serif text-[1.2rem] leading-relaxed">
-              <Vn n={v.verse} /> <Marked text={v.web} marks={marks.filter((m) => m.ord === v.ord)} trail={trail} />
+              <Vn n={v.verse} onVerse={onVerse} active={activeVerse === v.verse} /> {v.web ? <Marked text={v.web} marks={marks.filter((m) => m.ord === v.ord)} trail={trail} /> : <Omitted />}
             </p>
             {v.amh ? (
               <p className="ethiopic text-[1.05rem] leading-relaxed">
@@ -162,10 +188,16 @@ export function ReadStep({
         <p key={para[0].ord} className="mb-6">
           {para.map((v) => {
             const text = amh ? v.amh?.text : v.web;
+            if (!amh && !text)
+              return (
+                <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
+                  <Vn n={v.verse} /> <Omitted />{" "}
+                </span>
+              );
             if (!text) return null; // Amharic: covered by a combined verse
             return (
               <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
-                <Vn n={v.verse} end={amh ? v.amh?.endVerse : null} />
+                <Vn n={v.verse} end={amh ? v.amh?.endVerse : null} onVerse={amh ? undefined : onVerse} active={activeVerse === v.verse} />
                 {amh ? text : <Marked text={text} marks={marks.filter((m) => m.ord === v.ord)} trail={trail} />}{" "}
               </span>
             );

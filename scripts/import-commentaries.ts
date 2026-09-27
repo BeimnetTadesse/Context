@@ -65,6 +65,21 @@ const clean = (s: string) =>
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
+/**
+ * Calvin's notes reprint the passage first — a heading, then each verse in English and in Latin
+ * ("1. For this cause…" / "1. Hujus rei gratia…"). The verses are already on screen, so drop that block:
+ * the heading, then numbered paragraphs that come in same-number pairs. Commentary starts at the first non-pair.
+ */
+export function stripCalvinVerseBlock(text: string): string {
+  const paras = text.split(/\n\s*\n/);
+  let i = 0;
+  if (/^\s*(?:[1-3]\s)?[A-Z][a-z]+\s+\d+:\d+(?:[-–]\d+)?\s*$/.test(paras[0] ?? "")) i = 1;
+  const num = (p?: string) => p?.match(/^\s*(\d+)\.\s/)?.[1];
+  const start = i;
+  while (num(paras[i]) && num(paras[i]) === num(paras[i + 1])) i += 2;
+  return i > start ? paras.slice(i).join("\n\n") : text;
+}
+
 type Chapter = { chapter?: { number: number; introduction?: string | null; content: { type: string; number: number; content: string[] }[] }; missing?: boolean };
 
 async function main() {
@@ -147,7 +162,7 @@ async function main() {
           const stop = ord(book.id, ch, c.section ? Math.min(end, endOfChapter) : item.number);
           if (!start || !stop) return;
           notes.push({ id: 0, source_id: sid[c.id], book_id: book.id, chapter: ch, start_ord: start, end_ord: Math.max(start, stop),
-                       text: clean(item.content.join("\n\n")), sort: sort++ });
+                       text: c.key === "Calvin" ? stripCalvinVerseBlock(clean(item.content.join("\n\n"))) : clean(item.content.join("\n\n")), sort: sort++ });
         });
       }
     }

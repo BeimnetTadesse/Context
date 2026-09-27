@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Dot, ProvenanceKey } from "@/components/ui";
 import { ClaimCard } from "@/components/study/Claim";
+import { VerseCommentary } from "@/components/study/Commentators";
 import { postJson, useStudy } from "@/components/study/context";
 import type { GreekWord } from "@/lib/data/chapter";
 import type { ClaimView } from "@/lib/data/study";
@@ -156,6 +157,8 @@ export function Margin({
   setTab,
   askRequest,
   letters,
+  commentVerse = null,
+  onCloseVerse,
 }: {
   step: StepKey;
   mode: ReadMode;
@@ -165,6 +168,8 @@ export function Margin({
   setTab: (t: "margin" | "ask") => void;
   askRequest: AskRequest | null;
   letters: (ClaimView & { letter: string })[];
+  commentVerse?: number | null;
+  onCloseVerse?: () => void;
 }) {
   const { study } = useStudy();
 
@@ -191,8 +196,9 @@ export function Margin({
       </div>
 
       <div hidden={tab !== "margin"} className="space-y-8">
+        {commentVerse !== null && <VerseCommentary key={commentVerse} verse={commentVerse} onClose={() => onCloseVerse?.()} />}
         {word && <LexiconCard key={`${word.strongs}-${word.surface}`} word={word} onClose={onCloseWord} />}
-        {step === "read" && !word && (
+        {step === "read" && !word && commentVerse === null && (
           <div>
             <p className="eyebrow border-b border-rule pb-4 text-muted">Margin notes</p>
             {letters.length ? (
