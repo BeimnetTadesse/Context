@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Wordmark } from "@/components/ui";
 import { sql } from "@/lib/db";
 
@@ -15,6 +16,7 @@ const TIERS: Record<number, string> = {
 };
 
 export default async function Sources() {
+  await connection(); // live claim counts: render per request, not at build time
   const sources = await sql<{ key: string; title: string; author: string | null; publisher: string | null; year: string | null; url: string | null; tier: number; source_type: string; orientation: string | null; license: string; can_display: boolean; claims: number; verified: number }[]>`
     select s.*, count(distinct c.claim_id)::int as claims,
            count(distinct c.claim_id) filter (where cl.status = 'verified')::int as verified

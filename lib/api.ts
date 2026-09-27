@@ -1,4 +1,5 @@
 import "server-only";
+import { sql } from "@/lib/db";
 import { bookBySlug } from "@/lib/bible/books";
 import { AiBusyError, AiRateLimitError, AiRefusedError, AiUnavailableError } from "@/lib/ai/client";
 
@@ -18,6 +19,22 @@ export function aiError(e: unknown) {
   if (e instanceof AiRefusedError) return json({ error: "refused", message: e.message }, 422);
   console.error(e);
   return json({ error: "failed", message: e instanceof Error ? e.message : "Something went wrong." }, 500);
+}
+
+/**
+ * Protect the (free) AI quota once the site is public:
+ * at most PER_USER calls per visitor and SITE calls in total, per rolling 24 hours.
+ */
+const PER_USER = Number(process.env.AI_DAILY_LIMIT_PER_USER ?? 40);
+const SITE = Number(process.env.AI_DAILY_LIMIT_SITE ?? 300);
+
+export async function aiBudgetExceeded(userId: number) {
+  const [r] = await sql<{ mine: number; all: number }[]>`
+    select count(*) filter (where user_id = ${userId})::int as mine, count(*)::int as all
+    from ai_runs where created_at > now() - interval '24 hours'`;
+  if (r.mine >= PER_USER) return json({ error: "limit", message: `You've reached today's limit of ${PER_USER} questions. It resets within 24 hours.` }, 429);
+  if (r.all >= SITE) return json({ error: "limit", message: "Context has reached today's limit for the research assistant. Please try again tomorrow." }, 429);
+  return null;
 }
 
 export const clean = (s: unknown, max: number) => (typeof s === "string" ? s.trim().slice(0, max) : "");

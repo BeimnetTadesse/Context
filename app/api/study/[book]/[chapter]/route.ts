@@ -1,5 +1,6 @@
 import { aiConfigured } from "@/lib/ai/client";
-import { aiError, json, ntChapter } from "@/lib/api";
+import { aiBudgetExceeded, aiError, json, ntChapter } from "@/lib/api";
+import { ensureUserId } from "@/lib/user";
 import { beginGeneration, failGeneration, generateChapterStudy } from "@/lib/study/generate";
 
 // Generating a chapter study is one long model call (~1–3 minutes).
@@ -11,6 +12,8 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/study/[book]/[
   if (!target) return json({ error: "not_found" }, 404);
   if (!aiConfigured()) return json({ error: "ai_unavailable", message: "Add GEMINI_API_KEY to .env.local to prepare studies." }, 503);
 
+  const limited = await aiBudgetExceeded(await ensureUserId());
+  if (limited) return limited;
   const claim = await beginGeneration(target.book.id, target.chapter);
   if (claim !== "started") return json({ status: claim === "ready" ? "ready" : "pending" });
   try {
