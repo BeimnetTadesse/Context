@@ -17,7 +17,7 @@ const TIERS: Record<number, string> = {
 
 export default async function Sources() {
   await connection(); // live claim counts: render per request, not at build time
-  const sources = await sql<{ key: string; title: string; author: string | null; publisher: string | null; year: string | null; url: string | null; tier: number; source_type: string; orientation: string | null; license: string; can_display: boolean; claims: number; verified: number }[]>`
+  const sources = await sql<{ key: string; title: string; author: string | null; publisher: string | null; year: string | null; url: string | null; tier: number; source_type: string; orientation: string | null; license: string; can_display: boolean; claims: number; verified: number; tradition: string | null; notes: string | null }[]>`
     select s.*, count(distinct c.claim_id)::int as claims,
            count(distinct c.claim_id) filter (where cl.status = 'verified')::int as verified
     from sources s left join citations c on c.source_id = s.id left join claims cl on cl.id = c.claim_id
@@ -47,6 +47,7 @@ export default async function Sources() {
                   {s.url ? <a href={s.url} target="_blank" rel="noreferrer" className="hover:text-accent">{s.title}</a> : s.title}
                 </p>
                 <p className="mt-1 text-ink-2">{[s.author, s.publisher, s.year].filter(Boolean).join(" · ")}</p>
+                {s.notes && <p className="mt-2 text-sm text-ink-2">{s.notes}</p>}
                 <p className="mt-3 text-sm text-muted">
                   {s.license}
                   {s.can_display ? " · text shown in Context" : " · cited only, never quoted at length"}
@@ -56,14 +57,17 @@ export default async function Sources() {
                 <dt className="text-muted">Tier</dt><dd>{s.tier} · {TIERS[s.tier]}</dd>
                 <dt className="text-muted">Type</dt><dd>{s.source_type}</dd>
                 <dt className="text-muted">Orientation</dt><dd>{s.orientation ?? "—"}</dd>
+                {s.tradition && (<><dt className="text-muted">Tradition</dt><dd>{s.tradition}</dd></>)}
                 <dt className="text-muted">Cited by</dt><dd>{s.claims} claims · {s.verified} verified</dd>
               </dl>
             </li>
           ))}
         </ul>
         <p className="mt-8 text-sm leading-relaxed text-muted">
-          Not yet in the library: academic commentaries (e.g. Lincoln, Hoehner, Arnold) and lexicons such as BDAG and
-          Louw-Nida are copyrighted. They will be added as cited-only sources once each reference has been checked by hand.
+          <b className="font-medium text-ink-2">Gaps, stated plainly:</b> all six commentators are Protestant; Catholic,
+          Orthodox and early-church voices are not yet included. Modern academic commentaries (e.g. Lincoln, Hoehner,
+          Arnold) and lexicons such as BDAG and Louw-Nida are copyrighted and not included.{" "}
+          <Link href="/audit" className="text-accent underline underline-offset-4">See how every reference is checked →</Link>
         </p>
       </main>
     </div>
