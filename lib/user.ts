@@ -16,8 +16,11 @@ export interface Viewer {
   email: string | null;
 }
 
+/** Sign-in is optional: without AUTH_SECRET (e.g. before it's configured on Vercel) everyone is a device user. */
+export const authConfigured = () => Boolean(process.env.AUTH_SECRET);
+
 export async function currentViewer(): Promise<Viewer> {
-  const session = await auth();
+  const session = authConfigured() ? await auth().catch(() => null) : null;
   if (session?.user?.id) {
     return { id: Number(session.user.id), signedIn: true, name: session.user.name ?? null, image: session.user.image ?? null, email: session.user.email ?? null };
   }
