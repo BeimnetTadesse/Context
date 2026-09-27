@@ -1,7 +1,9 @@
 "use client";
 
 import type { GreekWord, VerseRow } from "@/lib/data/chapter";
+import { sharedWords } from "@/lib/diff";
 import type { Label } from "@/lib/labels";
+import { versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
 
 export interface PhraseMark {
   ord: number;
@@ -56,15 +58,6 @@ function Marked({ text, marks, trail }: { text: string; marks: PhraseMark[]; tra
   return <>{out}</>;
 }
 
-export type ReadMode = "web" | "amh" | "parallel" | "greek";
-
-export const READ_MODES: { key: ReadMode; label: string }[] = [
-  { key: "web", label: "English" },
-  { key: "amh", label: "አማርኛ" },
-  { key: "parallel", label: "Side by side" },
-  { key: "greek", label: "Greek" },
-];
-
 /** Group verses into the translation's own paragraphs (USFM \p markers). */
 function paragraphs(verses: VerseRow[]) {
   const out: VerseRow[][] = [];
@@ -96,14 +89,33 @@ function Vn({ n, end, onVerse, active }: { n: number; end?: number | null; onVer
 function Omitted() {
   return (
     <span className="font-sans text-[0.8rem] italic text-muted" title="Textual variant">
-      [not in the earliest manuscripts; this translation omits the verse]
+      [not in the manuscripts this version follows; the verse is omitted]
     </span>
+  );
+}
+
+/** A verse's text in one version (Amharic merged ranges handled by the caller). */
+const textOf = (v: VerseRow, code: VersionCode) => (code === "AMH" ? v.amh?.text : v.texts[code]);
+
+/** Compared column: words that differ from the main version are highlighted. */
+function Diffed({ base, text }: { base: string | undefined; text: string }) {
+  if (!base) return <>{text}</>;
+  return (
+    <>
+      {sharedWords(base, text).map((t, i) =>
+        t.shared ? t.token : (
+          <span key={i} className="rounded-sm bg-[var(--l-scholarly-bg)] text-ink" title="Differs from your main version">
+            {t.token}
+          </span>
+        ),
+      )}
+    </>
   );
 }
 
 export function ReadStep({
   verses,
-  mode,
+  prefs,
   selected,
   onSelectWord,
   marks = [],
@@ -112,7 +124,7 @@ export function ReadStep({
   activeVerse = null,
 }: {
   verses: VerseRow[];
-  mode: ReadMode;
+  prefs: ReadPrefs;
   selected: GreekWord | null;
   onSelectWord: (w: GreekWord) => void;
   marks?: PhraseMark[];
@@ -120,32 +132,10 @@ export function ReadStep({
   onVerse?: (v: number) => void;
   activeVerse?: number | null;
 }) {
-  if (mode === "parallel") {
-    return (
-      <div className="divide-y divide-rule">
-        <div className="hidden grid-cols-2 gap-8 pb-3 sm:grid">
-          <p className="eyebrow text-muted">World English Bible</p>
-          <p className="eyebrow text-muted">Amharic 1962</p>
-        </div>
-        {verses.map((v) => (
-          <div key={v.ord} id={`v${v.verse}`} className="grid scroll-mt-28 gap-3 py-4 sm:grid-cols-2 sm:gap-8">
-            <p className="font-serif text-[1.2rem] leading-relaxed">
-              <Vn n={v.verse} onVerse={onVerse} active={activeVerse === v.verse} /> {v.web ? <Marked text={v.web} marks={marks.filter((m) => m.ord === v.ord)} trail={trail} /> : <Omitted />}
-            </p>
-            {v.amh ? (
-              <p className="ethiopic text-[1.05rem] leading-relaxed">
-                <Vn n={v.verse} end={v.amh.endVerse} /> {v.amh.text}
-              </p>
-            ) : (
-              <p className="self-center font-sans text-sm italic text-muted">Included in a combined verse above.</p>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
+  // Provenance underlines are anchored to the WEB wording, so they only show on WEB.
+  const markFor = (v: VerseRow, code: VersionCode) => (code === "WEB" ? marks.filter((m) => m.ord === v.ord) : []);
 
-  if (mode === "greek") {
+  if (prefs.greek) {
     return (
       <div className="space-y-7">
         {verses.map((v) => (
@@ -180,14 +170,67 @@ export function ReadStep({
     );
   }
 
-  // Flowing text: English or Amharic
-  const amh = mode === "amh";
+  // Compare: one row per verse, a column per version.
+  if (prefs.compare.length) {
+    const cols = [prefs.primary, ...prefs.compare];
+    const grid = cols.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
+    return (
+      <div className="divide-y divide-rule">
+        <div className={`hidden gap-6 pb-3 sm:grid ${grid}`}>
+          {cols.map((c, i) => (
+            <p key={c} className="eyebrow text-muted">
+              {versionInfo(c).name}
+              {i === 0 ? " · main" : ""}
+            </p>
+          ))}
+        </div>
+        {verses.map((v) => {
+          const base = prefs.primary === "AMH" ? undefined : textOf(v, prefs.primary);
+          return (
+            <div key={v.ord} id={`v${v.verse}`} className={`grid scroll-mt-28 gap-3 py-4 sm:gap-6 ${grid}`}>
+              {cols.map((c, i) => {
+                const text = textOf(v, c);
+                const amh = c === "AMH";
+                return (
+                  <div key={c}>
+                    <p className="mb-0.5 font-mono text-[0.62rem] uppercase tracking-widest text-muted sm:hidden">{versionInfo(c).short}</p>
+                    {text ? (
+                      <p className={amh ? "ethiopic text-[1.05rem] leading-relaxed" : "font-serif text-[1.15rem] leading-relaxed"}>
+                        <Vn n={v.verse} end={amh ? v.amh?.endVerse : null} onVerse={i === 0 && !amh ? onVerse : undefined} active={activeVerse === v.verse} />{" "}
+                        {i === 0 ? (
+                          amh ? text : <Marked text={text} marks={markFor(v, c)} trail={trail} />
+                        ) : amh ? (
+                          text
+                        ) : (
+                          <Diffed base={base} text={text} />
+                        )}
+                      </p>
+                    ) : amh ? (
+                      <p className="font-sans text-sm italic text-muted">Included in a combined verse above.</p>
+                    ) : (
+                      <p className="font-sans text-sm italic text-muted">
+                        <Vn n={v.verse} /> Omitted — not in the manuscripts this version follows.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Flowing text in one version.
+  const code = prefs.primary;
+  const amh = code === "AMH";
   return (
     <div className={`scripture ${amh ? "ethiopic" : ""}`}>
       {paragraphs(verses).map((para) => (
         <p key={para[0].ord} className="mb-6">
           {para.map((v) => {
-            const text = amh ? v.amh?.text : v.web;
+            const text = textOf(v, code);
             if (!amh && !text)
               return (
                 <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
@@ -198,7 +241,7 @@ export function ReadStep({
             return (
               <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
                 <Vn n={v.verse} end={amh ? v.amh?.endVerse : null} onVerse={amh ? undefined : onVerse} active={activeVerse === v.verse} />
-                {amh ? text : <Marked text={text} marks={marks.filter((m) => m.ord === v.ord)} trail={trail} />}{" "}
+                {amh ? text : <Marked text={text} marks={markFor(v, code)} trail={trail} />}{" "}
               </span>
             );
           })}
