@@ -8,7 +8,7 @@ import { getStudy } from "@/lib/data/study";
 import { sql } from "@/lib/db";
 import type { Label } from "@/lib/labels";
 import { isStepKey } from "@/lib/steps";
-import { curatorMode, currentUserId } from "@/lib/user";
+import { curatorMode, currentViewer } from "@/lib/user";
 
 const MODES: ReadMode[] = ["web", "amh", "parallel", "greek"];
 
@@ -21,7 +21,8 @@ export async function generateMetadata(props: PageProps<"/study/[book]/[chapter]
 export default async function StudyPage(props: PageProps<"/study/[book]/[chapter]">) {
   const { book, chapter } = await props.params;
   const { step } = await props.searchParams;
-  const [data, books, userId] = await Promise.all([getChapter(book, Number(chapter)), getNtBooks(), currentUserId()]);
+  const [data, books, viewer] = await Promise.all([getChapter(book, Number(chapter)), getNtBooks(), currentViewer()]);
+  const userId = viewer.id;
   if (!data) notFound();
 
   const study = await getStudy(data.book, data.chapter, data.verses);
@@ -51,6 +52,7 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
       noteCount={countRows[0]?.n ?? 0}
       guesses={Object.fromEntries(guessRows.map((g) => [g.item_id, g.guess]))}
       notes={noteRows.map((n) => ({ id: n.id, kind: n.kind, itemId: n.item_id, body: n.body }))}
+      viewer={{ signedIn: viewer.signedIn, name: viewer.name, image: viewer.image }}
     />
   );
 }

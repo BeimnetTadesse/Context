@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Dot, Wordmark } from "@/components/ui";
 import { sql } from "@/lib/db";
 import { LABEL_INFO, type Label } from "@/lib/labels";
-import { currentUserId } from "@/lib/user";
+import { AccountButton } from "@/components/AccountButton";
+import { currentViewer } from "@/lib/user";
 
 export const metadata: Metadata = { title: "Notebook · Context" };
 
@@ -15,7 +16,8 @@ const KIND: Record<string, string> = {
 };
 
 export default async function Notebook() {
-  const userId = await currentUserId();
+  const viewer = await currentViewer();
+  const userId = viewer.id;
   type NoteRow = { id: number; kind: string; body: string; created_at: Date; name: string; slug: string; chapter: number; verse: number | null; prompt: string | null };
   const notes: NoteRow[] = userId
     ? await sql<NoteRow[]>`
@@ -52,7 +54,10 @@ export default async function Notebook() {
       <header className="border-b border-rule">
         <div className="mx-auto flex h-20 max-w-4xl items-center justify-between px-5 sm:px-10">
           <Wordmark />
-          <Link href="/study" className="text-ink-2 hover:text-ink">Choose a passage →</Link>
+          <div className="flex items-center gap-4">
+            <Link href="/study" className="text-ink-2 hover:text-ink">Choose a passage →</Link>
+            <AccountButton viewer={{ signedIn: viewer.signedIn, name: viewer.name, image: viewer.image }} />
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-4xl px-5 py-14 sm:px-10">
@@ -62,6 +67,17 @@ export default async function Notebook() {
           Everything here is personal reflection — saved privately on this device and never mixed with what the text says
           or what scholars claim.
         </p>
+
+        {!viewer.signedIn && (
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[var(--l-scholarly)] bg-[var(--l-scholarly-bg)] px-5 py-4">
+            <p className="text-ink-2">
+              {notes.length ? "These notes live only in this browser." : "Notes you write are kept only in this browser."} Sign in to keep them safe
+              and see them on every device.
+            </p>
+            <Link href="/signin?next=/notebook" className="rounded-xl bg-ink px-4 py-2 text-paper">Sign in</Link>
+          </div>
+        )}
+        {viewer.signedIn && <p className="mt-6 text-sm text-muted">Signed in as {viewer.email}. Your notes are saved to your account.</p>}
 
         {guesses.length > 0 && (
           <section className="mt-12 rounded-2xl border border-rule bg-card p-6">

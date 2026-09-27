@@ -97,17 +97,37 @@ export function WhyDrawer({ claim }: { claim: ClaimView }) {
                   open
                 </a>
               )}
+              {c.quote && (
+                <blockquote className="mt-1.5 w-full border-l-2 border-[var(--l-scholarly)] pl-3 font-serif text-[1rem] italic text-ink">
+                  “{c.quote}”
+                  <span className="ml-2 font-sans text-xs not-italic text-muted">
+                    — {c.title}{c.written ? `, ${c.written}` : ""}{c.tradition ? ` · ${c.tradition}` : ""}
+                  </span>
+                </blockquote>
+              )}
             </li>
           ))}
         </ul>
       </div>
+
+      {claim.review && (
+        <div className="border-t border-rule pt-3 text-[0.85rem] text-ink-2">
+          <p className="eyebrow mb-1 !text-[0.62rem] text-muted">Second reader</p>
+          <p>
+            <span className={`mr-2 font-mono text-[0.68rem] uppercase tracking-widest ${claim.review === "supported" ? "text-[var(--l-explicit)]" : "text-[var(--l-tradition)]"}`}>
+              {claim.review === "supported" ? "✓ Supported by the cited evidence" : claim.review === "partial" ? "◐ Partly supported" : "✗ Not supported"}
+            </span>
+            {claim.review_note}
+          </p>
+        </div>
+      )}
 
       <div className="border-t border-rule pt-3 text-[0.85rem] text-ink-2">
         <p className="eyebrow mb-1 !text-[0.62rem] text-muted">How this was produced</p>
         {claim.status === "verified"
           ? "Checked by a person against the sources above."
           : claim.origin === "ai_draft"
-            ? `Drafted by Context’s research assistant from the evidence above for ${book.name} ${chapter}. Every citation was checked to exist in that evidence, but no person has verified the reasoning yet.`
+            ? `Drafted by Context’s research assistant from the evidence above for ${book.name} ${chapter}. Every citation was checked to exist in that evidence${claim.citations.some((c) => c.quote) ? ", every quoted commentator's words were matched word-for-word" : ""}${claim.review ? ", and a second reader checked the claim against it" : ""}. No person has verified it yet.`
             : "Computed directly from the source data."}
       </div>
 

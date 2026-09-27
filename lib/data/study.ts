@@ -4,6 +4,7 @@ import { sql } from "@/lib/db";
 import type { Book } from "@/lib/bible/books";
 import type { Label } from "@/lib/labels";
 import type { VerseRow } from "./chapter";
+import { getBookIntros } from "./commentary";
 
 export interface Citation {
   key: string;
@@ -14,6 +15,9 @@ export interface Citation {
   locator: string | null;
   url: string | null;
   checked: boolean;
+  quote: string | null;
+  written: string | null;
+  tradition: string | null;
 }
 
 export interface ClaimView {
@@ -25,6 +29,8 @@ export interface ClaimView {
   strongs: string | null;
   status: "verified" | "unverified";
   origin: "computed" | "ai_draft" | "human";
+  review: "supported" | "partial" | "unsupported" | null;
+  review_note: string | null;
   anchors: { ord: number; verse: number; quote: string | null; text: string }[];
   citations: Citation[];
 }
@@ -59,6 +65,8 @@ export interface StudyData {
   statements: { id: number; text: string; expected: Label; explanation: string | null; claim: ClaimView | null }[];
   prompts: { id: number; text: string; range: string | null }[];
   ledger: Record<Label, number>;
+  intros: { key: string; title: string; author: string | null; written: string | null; tradition: string | null; license: string; text: string }[];
+  withheld: number;
 }
 
 const STOP = new Set(
@@ -100,7 +108,7 @@ export const getStudy = cache(async (book: Book, chapter: number, verses: VerseR
     select status, error, generated_at from chapter_studies where book_id = ${book.id} and chapter = ${chapter}`;
 
   const claimRows = await sql<Omit<ClaimView, "anchors" | "citations">[]>`
-    select id, label, statement, step, topic, strongs, status, origin from claims
+    select id, label, statement, step, topic, strongs, status, origin, review, review_note from claims
     where book_id = ${book.id} and (chapter = ${chapter} or chapter is null)
     order by id`;
   const ids = claimRows.map((c) => c.id);
@@ -113,10 +121,12 @@ export const getStudy = cache(async (book: Book, chapter: number, verses: VerseR
     : [];
   const citationRows = ids.length
     ? await sql<(Citation & { claim_id: number })[]>`
-        select c.claim_id, s.key, s.title, s.source_type, s.orientation, s.tier, c.locator, s.url, c.checked
+        select c.claim_id, s.key, s.title, s.source_type, s.orientation, s.tier, c.locator, s.url, c.checked, c.quote, s.written, s.tradition
         from citations c join sources s on s.id = c.source_id where c.claim_id = any(${ids}) order by s.tier, c.id`
     : [];
-  const claims: ClaimView[] = claimRows.map((c) => ({
+  // The second reader's "unsupported" verdict withholds a claim from the page (it stays in the audit).
+  const withheld = claimRows.filter((c) => c.review === "unsupported" && c.status !== "verified").length;
+  const claims: ClaimView[] = claimRows.filter((c) => !(c.review === "unsupported" && c.status !== "verified")).map((c) => ({
     ...c,
     anchors: anchorRows.filter((a) => a.claim_id === c.id).map((a) => ({ ord: a.ord, verse: a.verse, quote: a.quote, text: a.text })),
     citations: dedupeCitations(citationRows.filter((x) => x.claim_id === c.id)),
@@ -237,6 +247,8 @@ export const getStudy = cache(async (book: Book, chapter: number, verses: VerseR
       .map((i) => ({ id: i.id, text: i.text, expected: i.expected_label!, explanation: i.explanation, claim: i.claim_id ? claimById.get(i.claim_id) ?? null : null })),
     prompts: items.filter((i) => i.kind === "prompt").map((i) => ({ id: i.id, text: i.text, range: i.anchor_start ? range(i.anchor_start, i.anchor_end ?? i.anchor_start) : null })),
     ledger,
+    intros: await getBookIntros(book.id),
+    withheld,
   };
 });
 
@@ -249,5 +261,5 @@ function dedupeCitations(rows: (Citation & { claim_id: number })[]): Citation[] 
       seen.add(k);
       return true;
     })
-    .map((c) => ({ key: c.key, title: c.title, source_type: c.source_type, orientation: c.orientation, tier: c.tier, locator: c.locator, url: c.url, checked: c.checked }));
+    .map((c) => ({ key: c.key, title: c.title, source_type: c.source_type, orientation: c.orientation, tier: c.tier, locator: c.locator, url: c.url, checked: c.checked, quote: c.quote, written: c.written, tradition: c.tradition }));
 }

@@ -7,7 +7,14 @@ const pack = {
     ["V:Eph.3.14", {}],
     ["L:G4954", {}],
     ["X:9", {}],
+    ["K:1.0", {}],
+    ["K:2.0", {}],
   ]),
+  commentaryText: new Map([
+    ["K:1.0", "He calls it a mystery because it had been hidden from the Gentiles in former ages."],
+    ["K:2.0", "Let us seek the comfort of this promise every day."],
+  ]),
+  academic: new Set(["K:1.0"]),
   verseText: new Map([
     [100, "that the Gentiles are fellow heirs and fellow members of the body, and fellow partakers of his promise"],
     [108, "For this cause, I bow my knees to the Father of our Lord Jesus Christ,"],
@@ -60,6 +67,25 @@ describe("checkClaim", () => {
   it("matches quotes regardless of curly quotes and spacing", () => {
     const { out } = run({ label: "explicit", statement: "…", cites: ["V:Eph.3.14"], quote: "I  bow my knees" });
     expect(out?.anchors[0].quote).toBe("I  bow my knees");
+  });
+});
+
+describe("commentary citations", () => {
+  it("keeps a commentator citation only with their exact words", () => {
+    const ok = run({ label: "scholarly", statement: "Calvin reads the mystery as hidden from the Gentiles.", cites: ["V:Eph.3.6", "K:1.0"],
+      excerpt: "hidden from the Gentiles in former ages" });
+    expect(ok.out?.cites).toEqual(["V:Eph.3.6", "K:1.0"]);
+    expect(ok.out?.excerpts["K:1.0"]).toBe("hidden from the Gentiles in former ages");
+  });
+  it("removes the attribution when the words were paraphrased or invented", () => {
+    const bad = run({ label: "scholarly", statement: "Calvin says the mystery is the church.", cites: ["V:Eph.3.6", "K:1.0"],
+      excerpt: "the mystery is the church itself" });
+    expect(bad.out?.cites).toEqual(["V:Eph.3.6"]);
+    expect(bad.issues[0].problem).toMatch(/not found word-for-word/);
+  });
+  it("lets academic commentators, but not devotional ones, support historical claims", () => {
+    expect(run({ label: "historical", statement: "…", cites: ["K:1.0"], excerpt: "hidden from the Gentiles" }).out?.label).toBe("historical");
+    expect(run({ label: "historical", statement: "…", cites: ["K:2.0"], excerpt: "comfort of this promise" }).out).toBeNull();
   });
 });
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Dot, Wordmark } from "@/components/ui";
+import { AccountButton, type ViewerInfo } from "@/components/AccountButton";
 import type { ChapterData, GreekWord } from "@/lib/data/chapter";
 import type { StudyData } from "@/lib/data/study";
 import { LABEL_INFO, LABELS, type Label } from "@/lib/labels";
@@ -43,6 +44,7 @@ export function Workspace({
   noteCount: initialNoteCount,
   guesses,
   notes,
+  viewer,
 }: {
   data: ChapterData;
   books: NtBook[];
@@ -53,6 +55,7 @@ export function Workspace({
   noteCount: number;
   guesses: Record<number, Label>;
   notes: SavedNote[];
+  viewer: ViewerInfo;
 }) {
   const [step, setStep] = useState<StepKey>(initialStep);
   const [noteCount, setNoteCount] = useState(initialNoteCount);
@@ -60,6 +63,7 @@ export function Workspace({
   const [layer, setLayer] = useState(true);
   const [tab, setTab] = useState<"margin" | "ask">("margin");
   const [askRequest, setAskRequest] = useState<AskRequest | null>(null);
+  const [commentVerse, setCommentVerse] = useState<number | null>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<ReadMode>(initialMode);
   const [word, setWord] = useState<GreekWord | null>(null);
@@ -128,7 +132,15 @@ export function Workspace({
     [data.book, data.chapter, study, curator, trail, openAsk],
   );
 
+  const selectVerse = (v: number) => {
+    setCommentVerse(v);
+    setWord(null);
+    setTab("margin");
+    if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
+  };
+
   const selectWord = (w: GreekWord) => {
+    setCommentVerse(null);
     setWord(w);
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
   };
@@ -181,6 +193,7 @@ export function Workspace({
                 {noteCount}
               </span>
             </Link>
+            <AccountButton viewer={viewer} />
           </div>
         </div>
 
@@ -266,6 +279,7 @@ export function Workspace({
                   <span key={l} className="flex items-center gap-1.5"><Dot label={l} size={6} />{study.ledger[l]} {LABEL_INFO[l].short}</span>
                 ))}
                 {study.claims.every((c) => c.status !== "verified") && <span>· all unverified</span>}
+                {study.withheld > 0 && <span title="Claims the second reader judged not supported by their evidence">· {study.withheld} withheld after review</span>}
               </p>
             </div>
           )}
@@ -308,10 +322,10 @@ export function Workspace({
                 })()}
               </div>
               {mode !== "greek" && (
-                <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Select any phrase to ask · Text or Assumption?</p>
+                <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Tap a verse number for the commentators · Select any phrase to ask</p>
               )}
               <div className="mt-8" ref={textRef}>
-                <ReadStep verses={data.verses} mode={mode} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} />
+                <ReadStep verses={data.verses} mode={mode} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} />
               </div>
               <SelectionPopover
                 container={textRef}
@@ -328,7 +342,7 @@ export function Workspace({
           ) : step === "connections" ? (
             <ConnectionsStep />
           ) : step === "interpretations" ? (
-            <InterpretationsStep />
+            <InterpretationsStep verses={data.verses.map((v) => v.verse)} />
           ) : (
             <ReflectStep guesses={guesses} notes={notes} />
           )}
@@ -364,7 +378,7 @@ export function Workspace({
         >
           <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-rule lg:hidden" />
           <div className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:pb-8">
-            <Margin step={step} mode={mode} word={word} onCloseWord={() => setWord(null)} tab={tab} setTab={setTab} askRequest={askRequest} letters={letters} />
+            <Margin step={step} mode={mode} word={word} onCloseWord={() => setWord(null)} tab={tab} setTab={setTab} askRequest={askRequest} letters={letters} commentVerse={step === "read" ? commentVerse : null} onCloseVerse={() => setCommentVerse(null)} />
           </div>
         </aside>
       </div>

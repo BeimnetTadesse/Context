@@ -1,18 +1,34 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
+import { auth } from "@/auth";
 import { sql } from "@/lib/db";
 
-// Anonymous, device-scoped identity: a random id in an httpOnly cookie → a users row.
-// Enough to keep your notes and quiz answers private to this browser without passwords.
-// Swap for real sign-in (Auth.js) later; notes.user_id stays the same.
+// Who is this? A signed-in Google account if there is one; otherwise an anonymous device
+// (a random id in an httpOnly cookie) so reading and trying things never requires signing in.
 const COOKIE = "cid";
 
+export interface Viewer {
+  id: number | null;
+  signedIn: boolean;
+  name: string | null;
+  image: string | null;
+  email: string | null;
+}
+
+export async function currentViewer(): Promise<Viewer> {
+  const session = await auth();
+  if (session?.user?.id) {
+    return { id: Number(session.user.id), signedIn: true, name: session.user.name ?? null, image: session.user.image ?? null, email: session.user.email ?? null };
+  }
+  const deviceId = (await cookies()).get(COOKIE)?.value;
+  if (!deviceId || !/^[0-9a-f-]{36}$/.test(deviceId)) return { id: null, signedIn: false, name: null, image: null, email: null };
+  const [u] = await sql<{ id: number }[]>`select id from users where device_id = ${deviceId}`;
+  return { id: u?.id ?? null, signedIn: false, name: null, image: null, email: null };
+}
+
 export async function currentUserId(): Promise<number | null> {
-  const id = (await cookies()).get(COOKIE)?.value;
-  if (!id || !/^[0-9a-f-]{36}$/.test(id)) return null;
-  const [u] = await sql<{ id: number }[]>`select id from users where device_id = ${id}`;
-  return u?.id ?? null;
+  return (await currentViewer()).id;
 }
 
 /** Route handlers only (cookies can be set there, not in pages). */
