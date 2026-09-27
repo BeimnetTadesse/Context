@@ -13,7 +13,9 @@
     "db:reset": "dropdb --if-exists context_dev && createdb context_dev && npm run db:migrate && npm run db:import",
     "data:fetch": "bash scripts/fetch-data.sh",
     "study:generate": "tsx --conditions=react-server scripts/generate.ts",
-    "study:smoke": "tsx --conditions=react-server scripts/smoke-study.ts"
+    "study:smoke": "tsx --conditions=react-server scripts/smoke-study.ts",
+    "data:commentaries": "tsx scripts/fetch-commentaries.ts",
+    "db:commentaries": "tsx scripts/import-commentaries.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
