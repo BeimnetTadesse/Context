@@ -1,5 +1,6 @@
 import "server-only";
 import { sql } from "@/lib/db";
+import { cachedContent } from "@/lib/cache";
 
 export interface CommentaryRef {
   raw: string;
@@ -28,7 +29,11 @@ export interface Commentator {
 }
 
 /** Every commentator's notes that overlap verses [from, to] of a chapter, oldest voice first. */
-export async function getCommentary(bookId: number, chapter: number, from: number, to: number): Promise<Commentator[]> {
+export function getCommentary(bookId: number, chapter: number, from: number, to: number): Promise<Commentator[]> {
+  return cachedContent(["commentary", bookId, chapter, from, to], ["commentary"], () => loadCommentary(bookId, chapter, from, to));
+}
+
+async function loadCommentary(bookId: number, chapter: number, from: number, to: number): Promise<Commentator[]> {
   const rows = await sql<{
     id: number; key: string; title: string; author: string | null; written: string | null; tradition: string | null;
     tier: number; license: string; url: string | null; text: string; sv: number; ev: number; sc: number; ec: number;

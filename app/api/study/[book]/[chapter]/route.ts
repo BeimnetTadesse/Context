@@ -2,6 +2,7 @@ import { aiConfigured } from "@/lib/ai/client";
 import { aiBudgetExceeded, aiError, json, ntChapter } from "@/lib/api";
 import { ensureUserId } from "@/lib/user";
 import { beginGeneration, failGeneration, generateChapterStudy } from "@/lib/study/generate";
+import { refreshChapter } from "@/lib/cache";
 
 // Generating a chapter study is one long model call (~1–3 minutes).
 export const maxDuration = 300;
@@ -18,6 +19,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/study/[book]/[
   if (claim !== "started") return json({ status: claim === "ready" ? "ready" : "pending" });
   try {
     const result = await generateChapterStudy(target.book, target.chapter);
+    refreshChapter(target.book.slug, target.chapter);
     return json({ status: "ready", ...result });
   } catch (e) {
     await failGeneration(target.book.id, target.chapter, e instanceof Error ? e.message : String(e));

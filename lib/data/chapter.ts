@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { sql } from "@/lib/db";
+import { cachedContent, chapterTag } from "@/lib/cache";
 import { bookBySlug, type Book } from "@/lib/bible/books";
 
 export interface GreekWord {
@@ -32,8 +33,15 @@ export interface ChapterData {
   next: { slug: string; chapter: number; label: string } | null;
 }
 
-/** Everything the Read step needs for one chapter. cache() dedupes the call between metadata and page. */
-export const getChapter = cache(async (slug: string, chapter: number): Promise<ChapterData | null> => {
+/**
+ * Everything the Read step needs for one chapter. cachedContent serves it from the data cache (no database);
+ * React's cache() dedupes the call between metadata and page within one request.
+ */
+export const getChapter = cache((slug: string, chapter: number): Promise<ChapterData | null> =>
+  Number.isInteger(chapter) ? cachedContent(["chapter", slug, chapter], [chapterTag(slug, chapter)], () => loadChapter(slug, chapter)) : Promise.resolve(null),
+);
+
+async function loadChapter(slug: string, chapter: number): Promise<ChapterData | null> {
   const book = bookBySlug(slug);
   if (!book || book.testament !== "NT" || !Number.isInteger(chapter)) return null;
 
@@ -90,7 +98,7 @@ export const getChapter = cache(async (slug: string, chapter: number): Promise<C
   const [prev, next] = await Promise.all([neighbour(-1), neighbour(1)]);
 
   return { book, chapter, chapterCount: meta.chapter_count, verses, prev, next };
-});
+}
 
 export interface LexiconEntry {
   strongs: string;
@@ -101,7 +109,11 @@ export interface LexiconEntry {
   occurrences: number;
 }
 
-export async function getLemma(strongs: string): Promise<LexiconEntry | null> {
+export function getLemma(strongs: string): Promise<LexiconEntry | null> {
+  return cachedContent(["lemma", strongs], ["lexicon"], () => loadLemma(strongs));
+}
+
+async function loadLemma(strongs: string): Promise<LexiconEntry | null> {
   const [row] = await sql<LexiconEntry[]>`
     select l.strongs, l.lemma, l.translit, l.gloss, l.definition,
            (select count(*)::int from greek_words g where g.strongs = l.strongs) as occurrences
@@ -109,7 +121,9 @@ export async function getLemma(strongs: string): Promise<LexiconEntry | null> {
   return row ?? null;
 }
 
-export async function getNtBooks() {
-  return sql<{ slug: string; name: string; osis: string; chapter_count: number }[]>`
-    select slug, name, osis, chapter_count from books where testament = 'NT' order by id`;
+export function getNtBooks() {
+  return cachedContent(["books"], ["books"], async () =>
+    [...(await sql<{ slug: string; name: string; osis: string; chapter_count: number }[]>`
+      select slug, name, osis, chapter_count from books where testament = 'NT' order by id`)],
+  );
 }
