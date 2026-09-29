@@ -10,12 +10,21 @@ for l in open('.env.local'):
 [ -n "$NEON" ] || { echo "NEON_DATABASE_URL_DIRECT missing in .env.local"; exit 1; }
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
+# Neon runs a newer Postgres than the local server: use a matching client when available (brew install libpq).
+PGBIN=/opt/homebrew/opt/libpq/bin
+[ -x "$PGBIN/psql" ] && PSQL="$PGBIN/psql" && PGDUMP="$PGBIN/pg_dump" || { PSQL=psql; PGDUMP=pg_dump; }
+
+echo "0/5 backing up Neon, then migrating it to the current schema…"
+mkdir -p backups
+"$PGDUMP" --no-owner --no-privileges "$NEON" -f "backups/neon-before-sync-$(date +%Y%m%d-%H%M).sql"
+# Same schema on both sides → the saved user rows (select *) line up with the restored tables.
+DATABASE_URL="$NEON" npx tsx scripts/migrate.ts
 
 echo "1/5 saving live user data from Neon…"
 for t in users notes assumption_guesses; do
-  psql "$NEON" -q -c "\\copy (select * from $t) to '$TMP/$t.csv' csv header"
+  "$PSQL" "$NEON" -q -c "\\copy (select * from $t) to '$TMP/$t.csv' csv header"
 done
-psql "$NEON" -q -c "\\copy (select user_id, kind, book_id, chapter, input, retrieved, output, validation, model, prompt_version, created_at from ai_runs where user_id is not null) to '$TMP/ai_user.csv' csv header"
+"$PSQL" "$NEON" -q -c "\\copy (select user_id, kind, book_id, chapter, input, retrieved, output, validation, model, prompt_version, created_at from ai_runs where user_id is not null) to '$TMP/ai_user.csv' csv header"
 wc -l "$TMP"/*.csv | tail -n +1
 
 echo "2/5 dumping local content (no local users/notes/logs)…"
@@ -25,11 +34,11 @@ pg_dump --no-owner --no-privileges -d context_dev \
 psql -d context_dev -q -c "\\copy (select null::int as user_id, kind, book_id, chapter, input, retrieved, output, validation, model, prompt_version, created_at from ai_runs where kind in ('chapter_study','review')) to '$TMP/ai_local.csv' csv header"
 
 echo "3/5 replacing Neon content (single transaction)…"
-psql "$NEON" -q -v ON_ERROR_STOP=1 --single-transaction \
+"$PSQL" "$NEON" -q -v ON_ERROR_STOP=1 --single-transaction \
   -c "drop schema public cascade; create schema public;" -f "$TMP/content.sql" >/dev/null
 
 echo "4/5 restoring live user data…"
-psql "$NEON" -q -v ON_ERROR_STOP=1 --single-transaction <<SQL
+"$PSQL" "$NEON" -q -v ON_ERROR_STOP=1 --single-transaction <<SQL
 \\copy users from '$TMP/users.csv' csv header
 create temp table n (like notes);
 \\copy n from '$TMP/notes.csv' csv header
@@ -49,4 +58,4 @@ SQL
 
 echo "5/5 verifying…"
 Q="select 'studies',count(*) from chapter_studies where status='ready' union all select 'claims',count(*) from claims union all select 'commentary_notes',count(*) from commentary_notes union all select 'verse_texts',count(*) from verse_texts union all select 'users',count(*) from users union all select 'notes',count(*) from notes"
-psql "$NEON" -At -F ' ' -c "$Q"
+"$PSQL" "$NEON" -At -F ' ' -c "$Q"

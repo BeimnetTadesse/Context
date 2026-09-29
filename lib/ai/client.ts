@@ -93,7 +93,9 @@ async function callGemini(opts: { schema: z.ZodType; system: string; input: stri
             `The free Gemini quota is used up for now — try again in a minute (or tomorrow if the daily limit is reached).${detail ? ` [${detail}]` : ""}`,
           );
         }
-        if (status !== 503 && status !== 500) throw e;
+        // Transient: overload (503/500) or a dropped connection ("fetch failed", resets, timeouts).
+        const network = !status && /fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket|network/i.test(`${(e as Error).message} ${String((e as { cause?: unknown }).cause ?? "")}`);
+        if (status !== 503 && status !== 500 && !network) throw e;
         await sleep(1500 * (attempt + 1));
       }
     }
