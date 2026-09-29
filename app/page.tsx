@@ -217,7 +217,8 @@ export default async function Landing() {
           from STEP Bible (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY).{" "}
           <Link href="/sources" className="underline underline-offset-4 hover:text-ink">Source library →</Link> ·{" "}
           <Link href="/audit" className="underline underline-offset-4 hover:text-ink">How references are checked →</Link> ·{" "}
-          <Link href="/copyright" className="underline underline-offset-4 hover:text-ink">Copyright</Link>
+          <Link href="/copyright" className="underline underline-offset-4 hover:text-ink">Copyright</Link> ·{" "}
+          <Link href="/privacy" className="underline underline-offset-4 hover:text-ink">Privacy</Link>
         </div>
       </footer>
     </div>
