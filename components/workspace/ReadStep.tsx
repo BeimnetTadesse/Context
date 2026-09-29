@@ -3,7 +3,8 @@
 import type { GreekWord, VerseRow } from "@/lib/data/chapter";
 import { sharedWords } from "@/lib/diff";
 import type { Label } from "@/lib/labels";
-import { versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
+import { isLicensedVersion, versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
+import type { LicensedText } from "./Licensed";
 
 export interface PhraseMark {
   ord: number;
@@ -95,7 +96,15 @@ function Omitted() {
 }
 
 /** A verse's text in one version (Amharic merged ranges handled by the caller). */
-const textOf = (v: VerseRow, code: VersionCode) => (code === "AMH" ? v.amh?.text : v.texts[code]);
+const textOf = (v: VerseRow, code: VersionCode, licensed: Record<string, LicensedText>) =>
+  code === "AMH" ? v.amh?.text : isLicensedVersion(code) ? licensed[code]?.verses[v.verse] || undefined : v.texts[code];
+
+/** Licensed text: display only. Not selectable or copyable (so it also never reaches Ask / the AI). */
+const guard = {
+  className: "select-none",
+  onCopy: (e: React.ClipboardEvent) => e.preventDefault(),
+  onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+};
 
 /** Compared column: words that differ from the main version are highlighted. */
 function Diffed({ base, text }: { base: string | undefined; text: string }) {
@@ -122,9 +131,13 @@ export function ReadStep({
   trail = null,
   onVerse,
   activeVerse = null,
+  licensed = {},
+  licensedFailed = [],
 }: {
   verses: VerseRow[];
   prefs: ReadPrefs;
+  licensed?: Record<string, LicensedText>;
+  licensedFailed?: string[];
   selected: GreekWord | null;
   onSelectWord: (w: GreekWord) => void;
   marks?: PhraseMark[];
@@ -185,16 +198,21 @@ export function ReadStep({
           ))}
         </div>
         {verses.map((v) => {
-          const base = prefs.primary === "AMH" ? undefined : textOf(v, prefs.primary);
+          const base = prefs.primary === "AMH" ? undefined : textOf(v, prefs.primary, licensed);
           return (
             <div key={v.ord} id={`v${v.verse}`} className={`grid scroll-mt-28 gap-3 py-4 sm:gap-6 ${grid}`}>
               {cols.map((c, i) => {
-                const text = textOf(v, c);
+                const text = textOf(v, c, licensed);
+                const pending = isLicensedVersion(c) && !licensed[c];
                 const amh = c === "AMH";
                 return (
-                  <div key={c}>
+                  <div key={c} {...(isLicensedVersion(c) ? guard : {})}>
                     <p className="mb-0.5 font-mono text-[0.62rem] uppercase tracking-widest text-muted sm:hidden">{versionInfo(c).short}</p>
-                    {text ? (
+                    {pending ? (
+                      <p className="font-sans text-sm italic text-muted">
+                        {licensedFailed.includes(c) ? `${versionInfo(c).short} is unavailable right now.` : `Loading ${versionInfo(c).short}…`}
+                      </p>
+                    ) : text ? (
                       <p className={amh ? "ethiopic text-[1.05rem] leading-relaxed" : "font-serif text-[1.15rem] leading-relaxed"}>
                         <Vn n={v.verse} end={amh ? v.amh?.endVerse : null} onVerse={i === 0 && !amh ? onVerse : undefined} active={activeVerse === v.verse} />{" "}
                         {i === 0 ? (
@@ -225,12 +243,22 @@ export function ReadStep({
   // Flowing text in one version.
   const code = prefs.primary;
   const amh = code === "AMH";
+  if (isLicensedVersion(code) && !licensed[code])
+    return (
+      <p className="font-sans italic text-muted">
+        {licensedFailed.includes(code) ? `${versionInfo(code).short} is unavailable right now.` : `Loading ${versionInfo(code).short}…`}
+      </p>
+    );
   return (
-    <div className={`scripture ${amh ? "ethiopic" : ""}`}>
+    <div
+      className={`scripture ${amh ? "ethiopic" : ""} ${isLicensedVersion(code) ? guard.className : ""}`}
+      onCopy={isLicensedVersion(code) ? guard.onCopy : undefined}
+      onContextMenu={isLicensedVersion(code) ? guard.onContextMenu : undefined}
+    >
       {paragraphs(verses).map((para) => (
         <p key={para[0].ord} className="mb-6">
           {para.map((v) => {
-            const text = textOf(v, code);
+            const text = textOf(v, code, licensed);
             if (!amh && !text)
               return (
                 <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">

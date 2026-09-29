@@ -17,6 +17,7 @@ import { Margin } from "./Margin";
 import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
 import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
+import { LicensedNotices, useLicensed } from "./Licensed";
 import type { ReadPrefs } from "@/lib/versions";
 import { SelectionPopover } from "./SelectionPopover";
 
@@ -68,6 +69,8 @@ export function Workspace({
   const [commentVerse, setCommentVerse] = useState<number | null>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
+  const shownVersions = prefs.greek ? [] : [prefs.primary, ...prefs.compare];
+  const licensed = useLicensed(shownVersions, data.book.slug, data.chapter);
   const [word, setWord] = useState<GreekWord | null>(null);
   const [switcher, setSwitcher] = useState(false);
   const [sheet, setSheet] = useState(false);
@@ -314,7 +317,8 @@ export function Workspace({
                 <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Tap a verse number for the commentators · Select any phrase to ask</p>
               )}
               <div className="mt-8" ref={textRef}>
-                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} />
+                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} />
+                <LicensedNotices codes={shownVersions} texts={licensed.texts} />
               </div>
               <SelectionPopover
                 container={textRef}

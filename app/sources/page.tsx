@@ -67,7 +67,8 @@ export default async function Sources() {
           <b className="font-medium text-ink-2">Gaps, stated plainly:</b> all six commentators are Protestant; Catholic,
           Orthodox and early-church voices are not yet included. Modern academic commentaries (e.g. Lincoln, Hoehner,
           Arnold) and lexicons such as BDAG and Louw-Nida are copyrighted and not included.{" "}
-          <Link href="/audit" className="text-accent underline underline-offset-4">See how every reference is checked →</Link>
+          <Link href="/audit" className="text-accent underline underline-offset-4">See how every reference is checked →</Link> ·{" "}
+          <Link href="/copyright" className="text-accent underline underline-offset-4">Copyright notices</Link>
         </p>
       </main>
     </div>

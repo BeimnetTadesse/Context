@@ -1,0 +1,87 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Wordmark } from "@/components/ui";
+import { LICENSED } from "@/lib/apibible";
+
+export const metadata: Metadata = { title: "Copyright · Context" };
+
+// Official notices come straight from API.Bible's metadata for each version (cached ≤ 1 day), never retyped.
+async function licensedNotices() {
+  const key = process.env.API_BIBLE_KEY;
+  if (!key) return [];
+  return Promise.all(
+    Object.entries(LICENSED).map(async ([code, v]) => {
+      const r = await fetch(`https://rest.api.bible/v1/bibles/${v.bibleId}`, { headers: { "api-key": key }, next: { revalidate: 86400 } });
+      const d = r.ok ? ((await r.json()) as { data: { name: string; copyright: string } }).data : null;
+      return { code, name: d?.name ?? v.name, copyright: d?.copyright ?? "" };
+    }),
+  );
+}
+
+const AMHARIC =
+  "copyright © 1962, 2003 United Bible Societies. Revised Amharic Bible in XML (2003). Printed version by United Bible Societies (C)1962. E-Text in transliterated ASCII format by Lapsley/Brooks Foundation 1994. Unicode UTF-8 transformation and XML-tagging by Dirk Röckmann 2003 (www.nt-text.net). With kind permission of the Bible Society of Ethiopia. Every non-commercial work using this data in any form must fully include this copyright statement! Every commercial use of parts or the complete data in any form needs written permission of the Bible Society of Ethiopia!";
+
+export default async function Copyright() {
+  const notices = await licensedNotices();
+  return (
+    <div className="min-h-dvh">
+      <header className="border-b border-rule">
+        <div className="mx-auto flex h-20 max-w-4xl items-center justify-between px-5 sm:px-10">
+          <Wordmark />
+          <Link href="/sources" className="text-ink-2 hover:text-ink">Source library →</Link>
+        </div>
+      </header>
+      <main className="mx-auto max-w-4xl px-5 py-14 sm:px-10">
+        <p className="eyebrow text-accent">Copyright</p>
+        <h1 className="mt-4 font-serif text-[clamp(2.2rem,5vw,3.2rem)]">Scripture texts in Context</h1>
+
+        <h2 className="mt-12 font-serif text-2xl">Licensed translations</h2>
+        <p className="mt-2 text-ink-2">
+          Provided by <a href="https://api.bible" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">API.Bible</a>{" "}
+          for non-commercial use. Shown for reading and comparison only: they are fetched when you choose them, not stored by
+          Context, cannot be copied, and are never sent to any AI system.
+        </p>
+        <ul className="mt-4 space-y-4">
+          {notices.map((n) => (
+            <li key={n.code} className="rounded-xl border border-rule bg-card p-4">
+              <p className="font-serif text-lg">{n.name} ({n.code})</p>
+              <p className="mt-1 text-sm leading-relaxed text-ink-2">{n.copyright}</p>
+              <p className="mt-2 text-sm text-ink-2">
+                Scriptures quotations marked ({n.code}) are used by permission. All rights reserved. The {n.code} text may not be
+                quoted in any publication made available to the public by a Creative Commons license. The {n.code} may not be
+                translated into any other language.
+              </p>
+            </li>
+          ))}
+          {notices.length === 0 && <li className="text-sm text-muted">Licensed translations are not enabled on this deployment.</li>}
+        </ul>
+
+        <h2 className="mt-12 font-serif text-2xl">Amharic</h2>
+        <p className="mt-2 font-serif text-lg">Amharic Bible (1962), New Testament</p>
+        <p className="mt-1 text-sm leading-relaxed text-ink-2">{AMHARIC}</p>
+
+        <h2 className="mt-12 font-serif text-2xl">Public domain</h2>
+        <ul className="mt-2 space-y-1 text-ink-2">
+          <li>World English Bible (WEB) — eBible.org</li>
+          <li>Berean Standard Bible (BSB) — The Holy Bible, Berean Standard Bible, BSB is produced in cooperation with Bible Hub, Discovery Bible, OpenBible.com, and the Berean Bible Translation Committee. Dedicated to the public domain.</li>
+          <li>King James Version (KJV) — public domain outside the United Kingdom (Crown letters patent apply within the UK)</li>
+          <li>American Standard Version (ASV) and Young’s Literal Translation (YLT) — eBible.org</li>
+        </ul>
+        <h2 className="mt-12 font-serif text-2xl">Greek, lexicon and commentaries</h2>
+        <p className="mt-2 text-ink-2">
+          SBL Greek New Testament (CC BY 4.0) · Greek tagging and Abbott-Smith lexicon from STEP Bible, Tyndale House,
+          Cambridge (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY) · Tyndale Open Study Notes ©
+          Tyndale House Publishers (CC BY-SA 4.0) · Commentaries of Calvin, Henry, Gill, Clarke and Jamieson-Fausset-Brown
+          (public domain), via the Free Use Bible API. Details in the <Link href="/sources" className="text-accent underline underline-offset-4">source library</Link>.
+        </p>
+
+        <h2 className="mt-12 font-serif text-2xl">Usage reporting</h2>
+        <p className="mt-2 text-ink-2">
+          When you read a licensed translation, Context loads API.Bible’s Fair Use Management System (FUMS), which reports
+          which passages were viewed using anonymous device and session identifiers, so publishers can see how their text is
+          used. Nothing is reported when you read the public-domain or Amharic texts.
+        </p>
+      </main>
+    </div>
+  );
+}
