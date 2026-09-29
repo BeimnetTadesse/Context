@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Wordmark } from "@/components/ui";
 import { sql } from "@/lib/db";
+
+// Rebuilt at most hourly (served from cache in between), so it never waits on a sleeping database.
+export const revalidate = 3600;
 
 export const metadata: Metadata = { title: "How references are checked · Context" };
 
@@ -20,7 +22,6 @@ function Stat({ n, label, sub }: { n: string; label: string; sub?: string }) {
 }
 
 export default async function Audit() {
-  await connection(); // live numbers
   const [refs] = await sql<{ total: number; resolved: number }[]>`
     select count(*)::int as total, count(*) filter (where resolved)::int as resolved from commentary_refs`;
   const [claims] = await sql<{ total: number; verified: number; supported: number; partial: number; unsupported: number; unreviewed: number; quoted: number }[]>`

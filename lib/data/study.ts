@@ -5,6 +5,7 @@ import type { Book } from "@/lib/bible/books";
 import type { Label } from "@/lib/labels";
 import type { VerseRow } from "./chapter";
 import { getBookIntros } from "./commentary";
+import { cachedContent, chapterTag } from "@/lib/cache";
 
 export interface Citation {
   key: string;
@@ -95,7 +96,11 @@ function repeatedWords(verses: VerseRow[]) {
     .map(([word, e]) => ({ word, count: e.count, verses: [...e.verses] }));
 }
 
-export const getStudy = cache(async (book: Book, chapter: number, verses: VerseRow[]): Promise<StudyData> => {
+export const getStudy = cache((book: Book, chapter: number, verses: VerseRow[]): Promise<StudyData> =>
+  cachedContent(["study", book.slug, chapter], [chapterTag(book.slug, chapter)], () => loadStudy(book, chapter, verses)),
+);
+
+async function loadStudy(book: Book, chapter: number, verses: VerseRow[]): Promise<StudyData> {
   const lo = verses[0].ord;
   const hi = verses[verses.length - 1].ord;
   const verseOf = (ord: number) => verses.find((v) => v.ord === ord)?.verse ?? null;
@@ -247,10 +252,10 @@ export const getStudy = cache(async (book: Book, chapter: number, verses: VerseR
       .map((i) => ({ id: i.id, text: i.text, expected: i.expected_label!, explanation: i.explanation, claim: i.claim_id ? claimById.get(i.claim_id) ?? null : null })),
     prompts: items.filter((i) => i.kind === "prompt").map((i) => ({ id: i.id, text: i.text, range: i.anchor_start ? range(i.anchor_start, i.anchor_end ?? i.anchor_start) : null })),
     ledger,
-    intros: await getBookIntros(book.id),
+    intros: [...(await getBookIntros(book.id))],
     withheld,
   };
-});
+}
 
 function dedupeCitations(rows: (Citation & { claim_id: number })[]): Citation[] {
   const seen = new Set<string>();

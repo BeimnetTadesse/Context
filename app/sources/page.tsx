@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Wordmark } from "@/components/ui";
 import { sql } from "@/lib/db";
+
+// Rebuilt at most hourly (served from cache in between), so it never waits on a sleeping database.
+export const revalidate = 3600;
 
 export const metadata: Metadata = { title: "Sources · Context" };
 
@@ -16,7 +18,6 @@ const TIERS: Record<number, string> = {
 };
 
 export default async function Sources() {
-  await connection(); // live claim counts: render per request, not at build time
   const sources = await sql<{ key: string; title: string; author: string | null; publisher: string | null; year: string | null; url: string | null; tier: number; source_type: string; orientation: string | null; license: string; can_display: boolean; claims: number; verified: number; tradition: string | null; notes: string | null }[]>`
     select s.*, count(distinct c.claim_id)::int as claims,
            count(distinct c.claim_id) filter (where cl.status = 'verified')::int as verified
