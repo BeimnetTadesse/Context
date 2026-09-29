@@ -38,7 +38,8 @@ export default async function SignIn(props: PageProps<"/signin">) {
           </p>
         )}
         <p className="mt-6 text-xs leading-relaxed text-muted">
-          Context stores your name, email and profile picture from Google, and the notes you write. Nothing is shared or sold.
+          Context stores your name, email and profile picture from Google, and the notes you write. Nothing is shared or sold.{" "}
+          <a href="/privacy" className="underline underline-offset-2">Privacy</a>
         </p>
       </main>
     </div>
