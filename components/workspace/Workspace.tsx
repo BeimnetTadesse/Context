@@ -324,6 +324,7 @@ export function Workspace({
                 container={textRef}
                 onCheck={(t) => openAsk("check", t)}
                 onAsk={(t) => openAsk("ask", `What does “${t}” mean in this passage?`)}
+                onAskVerse={(ref) => openAsk("ask", `What does ${ref} mean in this passage?`)}
               />
             </>
           ) : step === "observe" ? (
