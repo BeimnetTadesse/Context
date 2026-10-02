@@ -224,7 +224,9 @@ export function ReadStep({
                         )}
                       </p>
                     ) : amh ? (
-                      <p className="font-sans text-sm italic text-muted">Included in a combined verse above.</p>
+                      <p className="font-sans text-sm italic text-muted" title="The eBible.org e-text of the 1962 Amharic Bible merges or drops some verses">
+                        Missing from this digital copy of the Amharic text.
+                      </p>
                     ) : (
                       <p className="font-sans text-sm italic text-muted">
                         <Vn n={v.verse} /> Omitted — not in the manuscripts this version follows.
@@ -265,7 +267,14 @@ export function ReadStep({
                   <Vn n={v.verse} /> <Omitted />{" "}
                 </span>
               );
-            if (!text) return null; // Amharic: covered by a combined verse
+            if (!text)
+              // Amharic: the eBible.org e-text merges or drops some verses — say so instead of skipping silently.
+              return (
+                <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
+                  <Vn n={v.verse} />{" "}
+                  <span className="font-sans text-[0.8rem] italic text-muted">[missing from this digital copy]</span>{" "}
+                </span>
+              );
             return (
               <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
                 <Vn n={v.verse} end={amh ? v.amh?.endVerse : null} onVerse={amh ? undefined : onVerse} active={activeVerse === v.verse} />

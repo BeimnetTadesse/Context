@@ -6,7 +6,7 @@ export const VERSIONS = [
   { code: "KJV", short: "KJV", name: "King James Version", note: "1611/1769; Textus Receptus" },
   { code: "ASV", short: "ASV", name: "American Standard Version", note: "1901; very literal" },
   { code: "YLT", short: "YLT", name: "Young's Literal Translation", note: "1862; word-for-word" },
-  { code: "AMH", short: "አማርኛ", name: "Amharic Bible (1962)", note: "Haile Selassie translation" },
+  { code: "AMH", short: "አማርኛ", name: "Amharic Bible (1954 E.C. / 1962)", note: "Haile Selassie translation · eBible e-text: ~7% of NT verses missing" },
   { code: "NIV", short: "NIV", name: "New International Version", note: "© Biblica · balanced, widely read", licensed: true },
   { code: "NLT", short: "NLT", name: "New Living Translation", note: "© Tyndale House · thought-for-thought", licensed: true },
   { code: "NASB", short: "NASB", name: "New American Standard Bible 2020", note: "© Lockman Foundation · word-for-word", licensed: true },
