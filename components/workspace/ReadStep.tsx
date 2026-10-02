@@ -3,7 +3,7 @@
 import type { GreekWord, VerseRow } from "@/lib/data/chapter";
 import { sharedWords } from "@/lib/diff";
 import type { Label } from "@/lib/labels";
-import { isLicensedVersion, versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
+import { isEthiopic, isLicensedVersion, versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
 import type { LicensedText } from "./Licensed";
 
 export interface PhraseMark {
@@ -98,6 +98,25 @@ function Omitted() {
 /** A verse's text in one version (Amharic merged ranges handled by the caller). */
 const textOf = (v: VerseRow, code: VersionCode, licensed: Record<string, LicensedText>) =>
   code === "AMH" ? v.amh?.text : isLicensedVersion(code) ? licensed[code]?.verses[v.verse] || undefined : v.texts[code];
+
+/** Last verse of a combined verse starting here (Amharic 1962 merged ranges, NASV's "25-26"). */
+const spanEnd = (v: VerseRow, code: VersionCode, licensed: Record<string, LicensedText>) =>
+  code === "AMH" ? v.amh?.endVerse ?? null : licensed[code]?.spans?.[v.verse] ?? null;
+
+/** A licensed version that combines verses: the verse whose text includes this one. */
+function coveredBy(v: VerseRow, code: VersionCode, licensed: Record<string, LicensedText>) {
+  const spans = licensed[code]?.spans ?? {};
+  for (const [start, end] of Object.entries(spans)) if (Number(start) < v.verse && end >= v.verse) return { start: Number(start), end };
+  return null;
+}
+
+function Combined({ start, end }: { start: number; end: number }) {
+  return (
+    <span className="font-sans text-[0.8rem] italic text-muted">
+      [included in verses {start}–{end} above]
+    </span>
+  );
+}
 
 /** Licensed text: display only. Not selectable or copyable (so it also never reaches Ask / the AI). */
 const guard = {
@@ -198,13 +217,18 @@ export function ReadStep({
           ))}
         </div>
         {verses.map((v) => {
-          const base = prefs.primary === "AMH" ? undefined : textOf(v, prefs.primary, licensed);
+          // Highlight differences only between texts in the same script, and not across combined verses.
+          const base = spanEnd(v, prefs.primary, licensed) ? undefined : textOf(v, prefs.primary, licensed);
           return (
             <div key={v.ord} id={`v${v.verse}`} className={`grid scroll-mt-28 gap-3 py-4 sm:gap-6 ${grid}`}>
               {cols.map((c, i) => {
                 const text = textOf(v, c, licensed);
                 const pending = isLicensedVersion(c) && !licensed[c];
                 const amh = c === "AMH";
+                const ethiopic = isEthiopic(c);
+                const end = spanEnd(v, c, licensed);
+                const combined = text ? null : coveredBy(v, c, licensed);
+                const diffBase = isEthiopic(prefs.primary) === ethiopic && !end ? base : undefined;
                 return (
                   <div key={c} {...(isLicensedVersion(c) ? guard : {})}>
                     <p className="mb-0.5 font-mono text-[0.62rem] uppercase tracking-widest text-muted sm:hidden">{versionInfo(c).short}</p>
@@ -213,15 +237,17 @@ export function ReadStep({
                         {licensedFailed.includes(c) ? `${versionInfo(c).short} is unavailable right now.` : `Loading ${versionInfo(c).short}…`}
                       </p>
                     ) : text ? (
-                      <p className={amh ? "ethiopic text-[1.05rem] leading-relaxed" : "font-serif text-[1.15rem] leading-relaxed"}>
-                        <Vn n={v.verse} end={amh ? v.amh?.endVerse : null} onVerse={i === 0 && !amh ? onVerse : undefined} active={activeVerse === v.verse} />{" "}
+                      <p className={ethiopic ? "ethiopic text-[1.05rem] leading-relaxed" : "font-serif text-[1.15rem] leading-relaxed"}>
+                        <Vn n={v.verse} end={end} onVerse={i === 0 && !amh ? onVerse : undefined} active={activeVerse === v.verse} />{" "}
                         {i === 0 ? (
-                          amh ? text : <Marked text={text} marks={markFor(v, c)} trail={trail} />
-                        ) : amh ? (
-                          text
+                          ethiopic ? text : <Marked text={text} marks={markFor(v, c)} trail={trail} />
                         ) : (
-                          <Diffed base={base} text={text} />
+                          <Diffed base={diffBase} text={text} />
                         )}
+                      </p>
+                    ) : combined ? (
+                      <p className="text-sm">
+                        <Combined {...combined} />
                       </p>
                     ) : amh ? (
                       <p className="font-sans text-sm italic text-muted" title="The eBible.org e-text of the 1962 Amharic Bible merges or drops some verses">
@@ -245,6 +271,7 @@ export function ReadStep({
   // Flowing text in one version.
   const code = prefs.primary;
   const amh = code === "AMH";
+  const ethiopic = isEthiopic(code);
   if (isLicensedVersion(code) && !licensed[code])
     return (
       <p className="font-sans italic text-muted">
@@ -253,7 +280,7 @@ export function ReadStep({
     );
   return (
     <div
-      className={`scripture ${amh ? "ethiopic" : ""} ${isLicensedVersion(code) ? guard.className : ""}`}
+      className={`scripture ${ethiopic ? "ethiopic" : ""} ${isLicensedVersion(code) ? guard.className : ""}`}
       onCopy={isLicensedVersion(code) ? guard.onCopy : undefined}
       onContextMenu={isLicensedVersion(code) ? guard.onContextMenu : undefined}
     >
@@ -261,6 +288,13 @@ export function ReadStep({
         <p key={para[0].ord} className="mb-6">
           {para.map((v) => {
             const text = textOf(v, code, licensed);
+            const combined = text ? null : coveredBy(v, code, licensed);
+            if (combined)
+              return (
+                <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
+                  <Vn n={v.verse} /> <Combined {...combined} />{" "}
+                </span>
+              );
             if (!amh && !text)
               return (
                 <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
@@ -277,8 +311,8 @@ export function ReadStep({
               );
             return (
               <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
-                <Vn n={v.verse} end={amh ? v.amh?.endVerse : null} onVerse={amh ? undefined : onVerse} active={activeVerse === v.verse} />
-                {amh ? text : <Marked text={text} marks={markFor(v, code)} trail={trail} />}{" "}
+                <Vn n={v.verse} end={spanEnd(v, code, licensed)} onVerse={amh ? undefined : onVerse} active={activeVerse === v.verse} />
+                {ethiopic ? text : <Marked text={text} marks={markFor(v, code)} trail={trail} />}{" "}
               </span>
             );
           })}

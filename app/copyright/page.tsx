@@ -1,28 +1,39 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Wordmark } from "@/components/ui";
-import { LICENSED } from "@/lib/apibible";
+import { API_BIBLE } from "@/lib/apibible";
+import { YOUVERSION } from "@/lib/licensed";
+import { youVersionNotice } from "@/lib/youversion";
 
 export const metadata: Metadata = { title: "Copyright · Context" };
 
-// Official notices come straight from API.Bible's metadata for each version (cached ≤ 1 day), never retyped.
+// Official notices come straight from each provider's metadata for each version (cached ≤ 1 day), never retyped.
 async function licensedNotices() {
   const key = process.env.API_BIBLE_KEY;
   if (!key) return [];
   return Promise.all(
-    Object.entries(LICENSED).map(async ([code, v]) => {
-      const r = await fetch(`https://rest.api.bible/v1/bibles/${v.bibleId}`, { headers: { "api-key": key }, next: { revalidate: 86400 } });
-      const d = r.ok ? ((await r.json()) as { data: { name: string; copyright: string } }).data : null;
+    Object.entries(API_BIBLE).map(async ([code, v]) => {
+      const r = await fetch(`https://rest.api.bible/v1/bibles/${v.bibleId}`, { headers: { "api-key": key }, next: { revalidate: 86400 } }).catch(() => null);
+      const d = r?.ok ? ((await r.json()) as { data: { name: string; copyright: string } }).data : null;
       return { code, name: d?.name ?? v.name, copyright: d?.copyright ?? "" };
     }),
   );
+}
+
+async function youVersionNotices() {
+  return Promise.all(
+    Object.entries(YOUVERSION).map(async ([code, v]) => {
+      const n = await youVersionNotice(v.bibleId);
+      return n && { code, ...n };
+    }),
+  ).then((all) => all.filter((n) => n !== null));
 }
 
 const AMHARIC =
   "copyright © 1962, 2003 United Bible Societies. Revised Amharic Bible in XML (2003). Printed version by United Bible Societies (C)1962. E-Text in transliterated ASCII format by Lapsley/Brooks Foundation 1994. Unicode UTF-8 transformation and XML-tagging by Dirk Röckmann 2003 (www.nt-text.net). With kind permission of the Bible Society of Ethiopia. Every non-commercial work using this data in any form must fully include this copyright statement! Every commercial use of parts or the complete data in any form needs written permission of the Bible Society of Ethiopia!";
 
 export default async function Copyright() {
-  const notices = await licensedNotices();
+  const [notices, yv] = await Promise.all([licensedNotices(), youVersionNotices()]);
   return (
     <div className="min-h-dvh">
       <header className="border-b border-rule">
@@ -57,7 +68,21 @@ export default async function Copyright() {
         </ul>
 
         <h2 className="mt-12 font-serif text-2xl">Amharic</h2>
-        <p className="mt-2 font-serif text-lg">Amharic Bible (1962), New Testament</p>
+        {yv.map((n) => (
+          <div key={n.code} className="mt-4 rounded-xl border border-rule bg-card p-4">
+            <p className="font-serif text-lg">{n.title} ({n.code})</p>
+            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink-2">{n.copyright}</p>
+            {n.trademark && <p className="mt-2 text-sm leading-relaxed text-ink-2">{n.trademark}</p>}
+            <p className="mt-2 text-sm text-ink-2">
+              Provided through the{" "}
+              <a href="https://platform.youversion.com" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">YouVersion Platform</a>{" "}
+              for non-commercial reading. Published by{" "}
+              <a href="https://www.biblica.com" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">Biblica, Inc.</a>{" "}
+              Not stored by Context, cannot be copied, and never sent to any AI system.
+            </p>
+          </div>
+        ))}
+        <p className="mt-6 font-serif text-lg">Amharic Bible (1962), New Testament</p>
         <p className="mt-1 text-sm leading-relaxed text-ink-2">{AMHARIC}</p>
 
         <h2 className="mt-12 font-serif text-2xl">Public domain</h2>

@@ -9,7 +9,7 @@ import type { GreekWord } from "@/lib/data/chapter";
 import type { ClaimView } from "@/lib/data/study";
 import type { StepKey } from "@/lib/steps";
 import { AskPanel, type AskRequest } from "./AskPanel";
-import { versionInfo, type ReadPrefs } from "@/lib/versions";
+import { isLicensedVersion, versionInfo, type ReadPrefs } from "@/lib/versions";
 
 interface Lexicon {
   strongs: string;
@@ -35,7 +35,7 @@ function translationSources(p: ReadPrefs): Cited[] {
   return [p.primary, ...p.compare].map((c) => ({
     key: c === "AMH" ? "AMH1962" : c,
     title: versionInfo(c).name,
-    kind: `Primary text · translation · ${c === "AMH" ? "non-commercial licence" : "public domain"}`,
+    kind: `Primary text · translation · ${c === "AMH" ? "non-commercial licence" : isLicensedVersion(c) ? "licensed · display only" : "public domain"}`,
   }));
 }
 const showsAmharic = (p: ReadPrefs) => !p.greek && (p.primary === "AMH" || p.compare.includes("AMH"));

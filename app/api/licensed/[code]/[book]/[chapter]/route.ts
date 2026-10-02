@@ -1,8 +1,8 @@
 import { json, ntChapter } from "@/lib/api";
-import { fetchLicensedChapter, isLicensed } from "@/lib/apibible";
+import { fetchLicensedChapter, isLicensed } from "@/lib/licensed";
 
-// GET /api/licensed/NIV/ephesians/3 → that chapter's verses (display only), copyright and FUMS token.
-// The API.Bible key stays on the server.
+// GET /api/licensed/NIV/ephesians/3 → that chapter’s verses (display only), copyright and FUMS token.
+// Provider keys (API.Bible, YouVersion) stay on the server.
 export async function GET(_req: Request, ctx: RouteContext<"/api/licensed/[code]/[book]/[chapter]">) {
   const { code, book, chapter } = await ctx.params;
   const target = ntChapter(book, chapter);
