@@ -15,5 +15,21 @@ export function toWeb(osis: string, chapter: number, verse: number): { chapter: 
   return { chapter: Number(c), verse: Number(v) };
 }
 
+/**
+ * Where a standard-numbered verse (and the ones moved with it) sits in WEB numbering, if elsewhere:
+ * Rom 16:25 → "14:24–26". Null when the verse stays put.
+ */
+export function movedTo(osis: string, chapter: number, verse: number): string | null {
+  const first = toWeb(osis, chapter, verse);
+  if (first.chapter === chapter) return null;
+  let last = first;
+  for (let v = verse + 1; ; v++) {
+    const w = toWeb(osis, chapter, v);
+    if (w.chapter !== first.chapter || w.verse !== last.verse + 1) break;
+    last = w;
+  }
+  return `${first.chapter}:${first.verse}${last.verse !== first.verse ? `–${last.verse}` : ""}`;
+}
+
 /** Verses WEB leaves empty because they appear only in later manuscripts. */
 export const OMITTED_IN_WEB = new Set(["Luke.17.36", "Acts.8.37", "Acts.15.34", "Acts.24.7", "Rom.16.25"]);

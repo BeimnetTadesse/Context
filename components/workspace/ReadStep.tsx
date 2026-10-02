@@ -103,11 +103,27 @@ const textOf = (v: VerseRow, code: VersionCode, licensed: Record<string, License
 const spanEnd = (v: VerseRow, code: VersionCode, licensed: Record<string, LicensedText>) =>
   code === "AMH" ? v.amh?.endVerse ?? null : licensed[code]?.spans?.[v.verse] ?? null;
 
-/** A licensed version that combines verses: the verse whose text includes this one. */
-function coveredBy(v: VerseRow, code: VersionCode, licensed: Record<string, LicensedText>) {
+/** A version that prints verses together (Amharic 1962, NASV): the combined verse that includes this one. */
+function coveredBy(v: VerseRow, code: VersionCode, licensed: Record<string, LicensedText>, verses: VerseRow[]) {
+  if (code === "AMH") {
+    const start = verses.findLast((r) => r.verse < v.verse && r.amh?.endVerse && r.amh.endVerse >= v.verse);
+    return start ? { start: start.verse, end: start.amh!.endVerse! } : null;
+  }
   const spans = licensed[code]?.spans ?? {};
   for (const [start, end] of Object.entries(spans)) if (Number(start) < v.verse && end >= v.verse) return { start: Number(start), end };
   return null;
+}
+
+/** Amharic verses missing from the eBible e-text, restored from WordProject's copy of the same 1962 translation. */
+function Restored() {
+  return (
+    <sup
+      className="ml-0.5 font-sans text-[0.8rem] font-semibold text-[var(--l-tradition)]"
+      title="Restored from WordProject’s copy of the 1962 Amharic Bible (missing from the eBible.org e-text). Worth checking against a printed Bible."
+    >
+      ◦
+    </sup>
+  );
 }
 
 /** A verse this version prints here, but Context (following the WEB's numbering) shows at another place. */
@@ -236,7 +252,7 @@ export function ReadStep({
                 const amh = c === "AMH";
                 const ethiopic = isEthiopic(c);
                 const end = spanEnd(v, c, licensed);
-                const combined = text ? null : coveredBy(v, c, licensed);
+                const combined = text ? null : coveredBy(v, c, licensed, verses);
                 const moved = text ? null : licensed[c]?.moved?.[v.verse];
                 const diffBase = isEthiopic(prefs.primary) === ethiopic && !end ? base : undefined;
                 return (
@@ -248,7 +264,8 @@ export function ReadStep({
                       </p>
                     ) : text ? (
                       <p className={ethiopic ? "ethiopic text-[1.05rem] leading-relaxed" : "font-serif text-[1.15rem] leading-relaxed"}>
-                        <Vn n={v.verse} end={end} onVerse={i === 0 && !amh ? onVerse : undefined} active={activeVerse === v.verse} />{" "}
+                        <Vn n={v.verse} end={end} onVerse={i === 0 && !amh ? onVerse : undefined} active={activeVerse === v.verse} />
+                        {amh && v.amh?.restored && <Restored />}{" "}
                         {i === 0 ? (
                           ethiopic ? text : <Marked text={text} marks={markFor(v, c)} trail={trail} />
                         ) : (
@@ -263,10 +280,12 @@ export function ReadStep({
                       <p className="text-sm">
                         <Vn n={v.verse} /> <Moved to={moved} />
                       </p>
-                    ) : amh ? (
-                      <p className="font-sans text-sm italic text-muted" title="The eBible.org e-text of the 1962 Amharic Bible merges or drops some verses">
-                        Missing from this digital copy of the Amharic text.
+                    ) : amh && v.movedTo ? (
+                      <p className="text-sm">
+                        <Vn n={v.verse} /> <Moved to={v.movedTo} />
                       </p>
+                    ) : amh ? (
+                      <p className="font-sans text-sm italic text-muted">Missing from the digital copies of the Amharic text.</p>
                     ) : (
                       <p className="font-sans text-sm italic text-muted">
                         <Vn n={v.verse} /> Omitted — not in the manuscripts this version follows.
@@ -301,7 +320,7 @@ export function ReadStep({
         <p key={para[0].ord} className="mb-6">
           {para.map((v) => {
             const text = textOf(v, code, licensed);
-            const combined = text ? null : coveredBy(v, code, licensed);
+            const combined = text ? null : coveredBy(v, code, licensed, verses);
             const moved = text ? null : licensed[code]?.moved?.[v.verse];
             if (moved)
               return (
@@ -309,29 +328,32 @@ export function ReadStep({
                   <Vn n={v.verse} /> <Moved to={moved} />{" "}
                 </span>
               );
-            if (combined)
-              return (
-                <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
-                  <Vn n={v.verse} /> <Combined {...combined} />{" "}
-                </span>
-              );
+            // Already labelled on the combined verse ("5–6"): keep only an anchor for jumping to this verse.
+            if (combined) return <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28" />;
             if (!amh && !text)
               return (
                 <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
                   <Vn n={v.verse} /> <Omitted />{" "}
                 </span>
               );
+            if (!text && v.movedTo)
+              return (
+                <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
+                  <Vn n={v.verse} /> <Moved to={v.movedTo} />{" "}
+                </span>
+              );
             if (!text)
-              // Amharic: the eBible.org e-text merges or drops some verses — say so instead of skipping silently.
+              // Amharic: say so instead of skipping silently (every NT verse is present now, but stay honest).
               return (
                 <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
                   <Vn n={v.verse} />{" "}
-                  <span className="font-sans text-[0.8rem] italic text-muted">[missing from this digital copy]</span>{" "}
+                  <span className="font-sans text-[0.8rem] italic text-muted">[missing from the digital copies]</span>{" "}
                 </span>
               );
             return (
               <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
                 <Vn n={v.verse} end={spanEnd(v, code, licensed)} onVerse={amh ? undefined : onVerse} active={activeVerse === v.verse} />
+                {amh && v.amh?.restored && <Restored />}
                 {ethiopic ? text : <Marked text={text} marks={markFor(v, code)} trail={trail} />}{" "}
               </span>
             );

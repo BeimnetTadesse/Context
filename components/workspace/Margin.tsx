@@ -231,7 +231,12 @@ export function Margin({
           </ul>
           <a href="/sources" className="mt-2 inline-block text-xs text-muted underline underline-offset-4 hover:text-ink">All sources →</a>
           {step === "read" && showsAmharic(prefs) && (
-            <p className="mt-3 text-[0.7rem] leading-relaxed text-muted">{AMHARIC_NOTICE}</p>
+            <>
+              <p className="mt-3 text-[0.7rem] leading-relaxed text-muted">{AMHARIC_NOTICE}</p>
+              <p className="mt-2 text-[0.7rem] leading-relaxed text-muted">
+                Verses marked ◦ were missing from that e-text and are restored from WordProject’s copy of the same translation (wordproject.org).
+              </p>
+            </>
           )}
           {step === "read" && <div className="mt-4"><ReportProblem prefs={prefs} /></div>}
         </div>
