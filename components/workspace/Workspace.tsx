@@ -249,8 +249,8 @@ export function Workspace({
               })}
             </nav>
 
-            <div className="mt-6 border-t border-rule pt-5">
-              <p className="eyebrow mb-2 text-muted">Passage</p>
+            <div className="mt-3 border-t border-rule pt-3">
+              <p className="eyebrow mb-1 text-muted">Passage</p>
               <p className="font-serif text-xl">
                 {data.book.name} {data.chapter}:{first}–{last}
               </p>
@@ -258,7 +258,7 @@ export function Workspace({
                 {data.verses.length} verses ·{" "}
                 {prefs.greek ? "Greek · SBLGNT" : [prefs.primary, ...prefs.compare].map((c) => versionInfo(c).short).join(" · ")}
               </p>
-              <p className="mt-3 font-mono text-[0.68rem] text-muted">⌘K go to · 1–7 steps</p>
+              <p className="mt-1.5 font-mono text-[0.68rem] text-muted">⌘K go to · 1–7 steps</p>
             </div>
           </div>
         </aside>
