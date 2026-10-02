@@ -6,19 +6,27 @@ import { postJson, useStudy } from "@/components/study/context";
 interface Sel {
   text: string;
   verse: number | null;
+  /** Licensed version the selection touches (e.g. "NASV"): only the verse reference may leave the page. */
+  licensed: string | null;
   x: number;
   y: number;
 }
 
-/** Select any phrase in Read → Text or Assumption? · Ask · Add note. */
+/**
+ * Select any phrase in Read → Text or Assumption? · Ask · Add note. In licensed text (NIV, NASV…) the wording is
+ * never sent anywhere: Ask asks about the verse by reference, and the note is saved without a quote.
+ */
 export function SelectionPopover({
   container,
   onCheck,
   onAsk,
+  onAskVerse,
 }: {
   container: React.RefObject<HTMLElement | null>;
   onCheck: (text: string) => void;
   onAsk: (text: string) => void;
+  /** Licensed text: ask by reference ("Romans 16:3"), never with the wording. */
+  onAskVerse: (ref: string) => void;
 }) {
   const { book, chapter, setNoteCount } = useStudy();
   const [sel, setSel] = useState<Sel | null>(null);
@@ -36,7 +44,8 @@ export function SelectionPopover({
       const rect = range.getBoundingClientRect();
       const el = (range.startContainer.parentElement as HTMLElement | null)?.closest("[id^='v']");
       const verse = el ? Number(el.id.slice(1)) || null : null;
-      setSel({ text, verse, x: rect.left + rect.width / 2, y: rect.top });
+      const touched = [...container.current.querySelectorAll<HTMLElement>("[data-licensed]")].find((n) => range.intersectsNode(n));
+      setSel({ text, verse, licensed: touched?.dataset.licensed ?? null, x: rect.left + rect.width / 2, y: rect.top });
       setNoting(false);
       setNote("");
       setSaved(false);
@@ -53,6 +62,7 @@ export function SelectionPopover({
   }, [container]);
 
   if (!sel) return null;
+  const ref = `${book.name} ${chapter}${sel.verse ? `:${sel.verse}` : ""}`;
   const close = () => {
     setSel(null);
     window.getSelection()?.removeAllRanges();
@@ -71,7 +81,8 @@ export function SelectionPopover({
             e.preventDefault();
             if (!note.trim()) return;
             const r = await postJson<{ count: number }>("/api/notes", {
-              book: book.slug, chapter, kind: "note", verse: sel.verse, body: `“${sel.text}” — ${note.trim()}`,
+              book: book.slug, chapter, kind: "note", verse: sel.verse,
+              body: sel.licensed ? `${ref} (${sel.licensed}) — ${note.trim()}` : `“${sel.text}” — ${note.trim()}`,
             });
             setNoteCount(r.count);
             setSaved(true);
@@ -84,8 +95,14 @@ export function SelectionPopover({
         </form>
       ) : (
         <div className="flex">
-          <button onClick={() => { onCheck(sel.text); close(); }} className="rounded-lg px-3 py-2 hover:bg-paper/10">Text or Assumption?</button>
-          <button onClick={() => { onAsk(sel.text); close(); }} className="rounded-lg px-3 py-2 hover:bg-paper/10">Ask about this</button>
+          {sel.licensed ? (
+            <button onClick={() => { onAskVerse(ref); close(); }} className="rounded-lg px-3 py-2 hover:bg-paper/10">Ask about {sel.verse ? `verse ${sel.verse}` : "this"}</button>
+          ) : (
+            <>
+              <button onClick={() => { onCheck(sel.text); close(); }} className="rounded-lg px-3 py-2 hover:bg-paper/10">Text or Assumption?</button>
+              <button onClick={() => { onAsk(sel.text); close(); }} className="rounded-lg px-3 py-2 hover:bg-paper/10">Ask about this</button>
+            </>
+          )}
           <button onClick={() => setNoting(true)} className="rounded-lg px-3 py-2 hover:bg-paper/10">Add note</button>
         </div>
       )}

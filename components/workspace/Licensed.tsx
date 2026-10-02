@@ -9,6 +9,8 @@ export interface LicensedText {
   verses: Record<number, string>;
   /** Combined verses: first → last. */
   spans: Record<number, number>;
+  /** Verses printed here by this version that Context places elsewhere: verse → "14:24". */
+  moved: Record<number, string>;
   copyright: string;
   trademark: string | null;
 }
@@ -45,7 +47,7 @@ export function useLicensed(codes: VersionCode[], bookSlug: string, chapter: num
         .then((d: LicensedText & { fumsToken: string | null }) => {
           if (!live) return;
           trackView(d.fumsToken);
-          const text = { verses: d.verses, spans: d.spans ?? {}, copyright: d.copyright, trademark: d.trademark ?? null };
+          const text = { verses: d.verses, spans: d.spans ?? {}, moved: d.moved ?? {}, copyright: d.copyright, trademark: d.trademark ?? null };
           setStore((s) => ({ key, texts: { ...(s.key === key ? s.texts : {}), [code]: text }, failed: s.key === key ? s.failed : [] }));
         })
         .catch(() => live && setStore((s) => ({ key, texts: s.key === key ? s.texts : {}, failed: [...(s.key === key ? s.failed : []), code] })));

@@ -110,6 +110,11 @@ function coveredBy(v: VerseRow, code: VersionCode, licensed: Record<string, Lice
   return null;
 }
 
+/** A verse this version prints here, but Context (following the WEB's numbering) shows at another place. */
+function Moved({ to }: { to: string }) {
+  return <span className="font-sans text-[0.8rem] italic text-muted">[shown at {to}, where Context’s verse numbering places it]</span>;
+}
+
 function Combined({ start, end }: { start: number; end: number }) {
   return (
     <span className="font-sans text-[0.8rem] italic text-muted">
@@ -118,10 +123,14 @@ function Combined({ start, end }: { start: number; end: number }) {
   );
 }
 
-/** Licensed text: display only. Not selectable or copyable (so it also never reaches Ask / the AI). */
+/**
+ * Licensed text: display only. It can be selected (to add a note or ask about a verse) but not copied, dragged
+ * out or right-clicked; the selection popover sends only the verse reference onward, never the wording.
+ */
 const guard = {
-  className: "select-none",
   onCopy: (e: React.ClipboardEvent) => e.preventDefault(),
+  onCut: (e: React.ClipboardEvent) => e.preventDefault(),
+  onDragStart: (e: React.DragEvent) => e.preventDefault(),
   onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
 };
 
@@ -228,9 +237,10 @@ export function ReadStep({
                 const ethiopic = isEthiopic(c);
                 const end = spanEnd(v, c, licensed);
                 const combined = text ? null : coveredBy(v, c, licensed);
+                const moved = text ? null : licensed[c]?.moved?.[v.verse];
                 const diffBase = isEthiopic(prefs.primary) === ethiopic && !end ? base : undefined;
                 return (
-                  <div key={c} {...(isLicensedVersion(c) ? guard : {})}>
+                  <div key={c} {...(isLicensedVersion(c) ? { ...guard, "data-licensed": c } : {})}>
                     <p className="mb-0.5 font-mono text-[0.62rem] uppercase tracking-widest text-muted sm:hidden">{versionInfo(c).short}</p>
                     {pending ? (
                       <p className="font-sans text-sm italic text-muted">
@@ -248,6 +258,10 @@ export function ReadStep({
                     ) : combined ? (
                       <p className="text-sm">
                         <Combined {...combined} />
+                      </p>
+                    ) : moved ? (
+                      <p className="text-sm">
+                        <Vn n={v.verse} /> <Moved to={moved} />
                       </p>
                     ) : amh ? (
                       <p className="font-sans text-sm italic text-muted" title="The eBible.org e-text of the 1962 Amharic Bible merges or drops some verses">
@@ -280,15 +294,21 @@ export function ReadStep({
     );
   return (
     <div
-      className={`scripture ${ethiopic ? "ethiopic" : ""} ${isLicensedVersion(code) ? guard.className : ""}`}
-      onCopy={isLicensedVersion(code) ? guard.onCopy : undefined}
-      onContextMenu={isLicensedVersion(code) ? guard.onContextMenu : undefined}
+      className={`scripture ${ethiopic ? "ethiopic" : ""}`}
+      {...(isLicensedVersion(code) ? { ...guard, "data-licensed": code } : {})}
     >
       {paragraphs(verses).map((para) => (
         <p key={para[0].ord} className="mb-6">
           {para.map((v) => {
             const text = textOf(v, code, licensed);
             const combined = text ? null : coveredBy(v, code, licensed);
+            const moved = text ? null : licensed[code]?.moved?.[v.verse];
+            if (moved)
+              return (
+                <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
+                  <Vn n={v.verse} /> <Moved to={moved} />{" "}
+                </span>
+              );
             if (combined)
               return (
                 <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
