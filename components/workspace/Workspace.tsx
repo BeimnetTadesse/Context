@@ -222,8 +222,7 @@ export function Workspace({
       <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[280px_minmax(0,1fr)_340px]">
         {/* Method nav (desktop) */}
         <aside className="hidden px-6 py-12 lg:block">
-          {/* Fits the window: on short screens it tightens, then scrolls on its own instead of being cut off. */}
-          <div className="sticky top-28 max-h-[calc(100dvh-8rem)] overflow-y-auto pb-6 [scrollbar-width:thin]">
+          <div className="sticky top-24">
             <p className="eyebrow mb-4 text-muted">Method</p>
             <nav className="space-y-1">
               {STEPS.map((s) => {
@@ -232,14 +231,14 @@ export function Workspace({
                   <button
                     key={s.key}
                     onClick={() => changeStep(s.key)}
-                    className={`flex w-full items-start gap-4 rounded-xl px-4 py-3 text-left transition [@media(max-height:860px)]:py-2 ${
+                    className={`flex w-full items-start gap-4 rounded-xl px-4 py-2.5 text-left transition ${
                       on ? "bg-card shadow-[0_1px_0_var(--rule),0_8px_24px_-18px_rgba(40,30,20,0.35)]" : "hover:bg-paper-2"
                     }`}
                   >
                     <span className="w-6 pt-0.5 font-mono text-xs text-accent">{s.numeral}</span>
                     <span className="flex-1">
                       <span className="block text-[1.02rem]">{s.name}</span>
-                      <span className="block text-sm text-muted [@media(max-height:820px)]:hidden">{s.tagline}</span>
+                      <span className="block text-sm text-muted">{s.tagline}</span>
                     </span>
                     <span
                       className="mt-2 h-1.5 w-1.5 rounded-full"
@@ -250,16 +249,16 @@ export function Workspace({
               })}
             </nav>
 
-            <div className="mt-8 border-t border-rule pt-6 [@media(max-height:860px)]:mt-5 [@media(max-height:860px)]:pt-4">
+            <div className="mt-6 border-t border-rule pt-5">
               <p className="eyebrow mb-2 text-muted">Passage</p>
               <p className="font-serif text-xl">
                 {data.book.name} {data.chapter}:{first}–{last}
               </p>
               <p className="mt-1 text-sm leading-relaxed text-muted">
                 {data.verses.length} verses ·{" "}
-                {prefs.greek ? "Greek text: SBLGNT" : [prefs.primary, ...prefs.compare].map((c) => versionInfo(c).name).join(" · ")}
+                {prefs.greek ? "Greek · SBLGNT" : [prefs.primary, ...prefs.compare].map((c) => versionInfo(c).short).join(" · ")}
               </p>
-              <p className="mt-4 font-mono text-[0.68rem] text-muted">⌘K go to · 1–7 steps</p>
+              <p className="mt-3 font-mono text-[0.68rem] text-muted">⌘K go to · 1–7 steps</p>
             </div>
           </div>
         </aside>
