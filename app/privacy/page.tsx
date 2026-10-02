@@ -55,7 +55,9 @@ export default function Privacy() {
         <H>Licensed Bible translations</H>
         <p className="mt-2">
           When you read NIV, NLT or NASB, their text is supplied by API.Bible, which requires a usage report (FUMS) listing the
-          passages viewed with anonymous device and session identifiers. See the{" "}
+          passages viewed with anonymous device and session identifiers. The New Amharic Standard Version (NASV) is supplied
+          by the YouVersion Platform: Context’s server requests the chapter, so YouVersion and Biblica can count which
+          chapters are read, but nothing about you is sent with the request. See the{" "}
           <Link href="/copyright" className="text-accent underline underline-offset-4">copyright page</Link>.
         </p>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { VERSIONS, versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
+import { VERSIONS, isEthiopic, versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
 
 /** Choose the main version, up to two to compare, or the Greek interlinear. */
 export function VersionToolbar({ prefs, onChange }: { prefs: ReadPrefs; onChange: (p: ReadPrefs) => void }) {
@@ -21,7 +21,7 @@ export function VersionToolbar({ prefs, onChange }: { prefs: ReadPrefs; onChange
               const primary = e.target.value as VersionCode;
               onChange({ primary, compare: prefs.compare.filter((c) => c !== primary), greek: false });
             }}
-            className={`rounded-full border border-rule bg-card px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none ${prefs.primary === "AMH" ? "font-ethiopic" : ""}`}
+            className={`rounded-full border border-rule bg-card px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none ${isEthiopic(prefs.primary) ? "font-ethiopic" : ""}`}
           >
             {VERSIONS.map((v) => (
               <option key={v.code} value={v.code}>
@@ -50,7 +50,7 @@ export function VersionToolbar({ prefs, onChange }: { prefs: ReadPrefs; onChange
               onClick={() => toggleCompare(v.code)}
               aria-pressed={on}
               title={`${v.name} — ${v.note}`}
-              className={`rounded-full border px-3 py-1 text-sm ${v.code === "AMH" ? "font-ethiopic" : ""} ${
+              className={`rounded-full border px-3 py-1 text-sm ${isEthiopic(v.code) ? "font-ethiopic" : ""} ${
                 on ? "border-[var(--l-scholarly)] bg-[var(--l-scholarly-bg)] text-ink" : "border-rule bg-card text-muted hover:border-ink hover:text-ink"
               }`}
             >

@@ -3,11 +3,14 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useEffect, useState } from "react";
-import { isLicensedVersion, versionInfo, type VersionCode } from "@/lib/versions";
+import { isLicensedVersion, isYouVersion, versionInfo, type VersionCode } from "@/lib/versions";
 
 export interface LicensedText {
   verses: Record<number, string>;
+  /** Combined verses: first → last. */
+  spans: Record<number, number>;
   copyright: string;
+  trademark: string | null;
 }
 
 declare global {
@@ -26,7 +29,7 @@ function trackView(token: string | null) {
   window.fums("trackView", token);
 }
 
-/** Fetches licensed chapters (NIV/NLT/NASB) the reader has chosen, reporting each view to FUMS. */
+/** Fetches licensed chapters (NIV/NLT/NASB/NASV) the reader has chosen, reporting API.Bible views to FUMS. */
 export function useLicensed(codes: VersionCode[], bookSlug: string, chapter: number) {
   const wanted = codes.filter((c) => isLicensedVersion(c));
   const key = `${bookSlug}/${chapter}`;
@@ -42,7 +45,8 @@ export function useLicensed(codes: VersionCode[], bookSlug: string, chapter: num
         .then((d: LicensedText & { fumsToken: string | null }) => {
           if (!live) return;
           trackView(d.fumsToken);
-          setStore((s) => ({ key, texts: { ...(s.key === key ? s.texts : {}), [code]: { verses: d.verses, copyright: d.copyright } }, failed: s.key === key ? s.failed : [] }));
+          const text = { verses: d.verses, spans: d.spans ?? {}, copyright: d.copyright, trademark: d.trademark ?? null };
+          setStore((s) => ({ key, texts: { ...(s.key === key ? s.texts : {}), [code]: text }, failed: s.key === key ? s.failed : [] }));
         })
         .catch(() => live && setStore((s) => ({ key, texts: s.key === key ? s.texts : {}, failed: [...(s.key === key ? s.failed : []), code] })));
     }
@@ -55,24 +59,38 @@ export function useLicensed(codes: VersionCode[], bookSlug: string, chapter: num
   return { texts: current.texts, failed: current.failed, active: wanted.length > 0 };
 }
 
-/** The FUMS script (only mounted while licensed text is on screen) and the required notices. */
+const link = "underline underline-offset-2 hover:text-ink";
+
+/** The FUMS script (only while API.Bible text is on screen) and each version's required notices. */
 export function LicensedNotices({ codes, texts }: { codes: VersionCode[]; texts: Record<string, LicensedText> }) {
   const shown = codes.filter((c) => isLicensedVersion(c));
   if (!shown.length) return null;
+  const apiBible = shown.some((c) => !isYouVersion(c));
+  const youVersion = shown.some((c) => isYouVersion(c));
   return (
     <>
-      <Script src="https://pkg.api.bible/fumsV3.min.js" strategy="afterInteractive" />
+      {apiBible && <Script src="https://pkg.api.bible/fumsV3.min.js" strategy="afterInteractive" />}
       <div className="mt-10 space-y-2 border-t border-rule pt-4 text-[0.75rem] leading-relaxed text-muted">
         {shown.map((c) => (
-          <p key={c}>
-            <span className="font-mono text-accent">{versionInfo(c).short}</span> — {texts[c]?.copyright ?? versionInfo(c).name}
-          </p>
+          <div key={c}>
+            <p className="whitespace-pre-line">
+              <span className="font-mono text-accent">{versionInfo(c).short}</span> — {texts[c]?.copyright ?? versionInfo(c).name}
+            </p>
+            {texts[c]?.trademark && <p className="mt-1">{texts[c].trademark}</p>}
+            {isYouVersion(c) && (
+              <p className="mt-1">
+                Published by <a href="https://www.biblica.com" target="_blank" rel="noreferrer" className={link}>Biblica, Inc. (biblica.com)</a>
+              </p>
+            )}
+          </div>
         ))}
         <p>
           Licensed text provided by{" "}
-          <a href="https://api.bible" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">API.Bible</a>
+          {apiBible && <a href="https://api.bible" target="_blank" rel="noreferrer" className={link}>API.Bible</a>}
+          {apiBible && youVersion && " and "}
+          {youVersion && <a href="https://platform.youversion.com" target="_blank" rel="noreferrer" className={link}>the YouVersion Platform</a>}
           {" "}for reading only: it can’t be copied here and is never used by Context’s AI.{" "}
-          <Link href="/copyright" className="underline underline-offset-2 hover:text-ink">Full copyright information</Link>
+          <Link href="/copyright" className={link}>Full copyright information</Link>
         </p>
       </div>
     </>
