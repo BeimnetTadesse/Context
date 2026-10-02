@@ -15,8 +15,10 @@
     "study:generate": "tsx --conditions=react-server scripts/generate.ts",
     "study:smoke": "tsx --conditions=react-server scripts/smoke-study.ts",
     "data:commentaries": "tsx scripts/fetch-commentaries.ts",
+    "data:amharic": "tsx scripts/fetch-wordproject-amh.ts",
     "db:commentaries": "tsx scripts/import-commentaries.ts",
-    "db:translations": "tsx scripts/import-translations.ts"
+    "db:translations": "tsx scripts/import-translations.ts",
+    "db:amharic": "tsx scripts/import-amharic-restore.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

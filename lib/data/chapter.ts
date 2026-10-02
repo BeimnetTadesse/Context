@@ -3,6 +3,7 @@ import { cache } from "react";
 import { sql } from "@/lib/db";
 import { cachedContent, chapterTag } from "@/lib/cache";
 import { bookBySlug, type Book } from "@/lib/bible/books";
+import { movedTo } from "@/lib/bible/versification";
 
 export interface GreekWord {
   position: number;
@@ -18,7 +19,10 @@ export interface VerseRow {
   verse: number;
   para: boolean;
   web: string;
-  amh: { text: string; endVerse: number | null } | null; // null = covered by a merged range above
+  /** null = covered by a combined verse above. restored = filled from WordProject (missing from the eBible e-text). */
+  amh: { text: string; endVerse: number | null; restored: boolean } | null;
+  /** Printed elsewhere in Context's (WEB) numbering, e.g. Rom 16:25 → "14:24–26". */
+  movedTo: string | null;
   /** Other English versions by code (BSB, KJV, ASV, YLT); missing key = the version omits this verse. */
   texts: Record<string, string>;
   greek: GreekWord[];
@@ -49,13 +53,14 @@ async function loadChapter(slug: string, chapter: number): Promise<ChapterData |
   if (!meta || chapter < 1 || chapter > meta.chapter_count) return null;
 
   const rows = await sql<
-    { ord: number; verse: number; para: boolean; web: string; amh: string | null; amh_end: number | null }[]
+    { ord: number; verse: number; para: boolean; web: string; amh: string | null; amh_end: number | null; amh_restored: boolean }[]
   >`
     select v.ord, v.verse,
            coalesce(w.para, false) as para,
            w.text as web,
            a.text as amh,
-           ev.verse as amh_end
+           ev.verse as amh_end,
+           a.source_id is not null as amh_restored
     from verses v
     left join verse_texts w on w.ord = v.ord and w.translation_code = 'WEB'
     left join verse_texts a on a.ord = v.ord and a.translation_code = 'AMH'
@@ -83,7 +88,8 @@ async function loadChapter(slug: string, chapter: number): Promise<ChapterData |
     verse: r.verse,
     para: r.para,
     web: r.web,
-    amh: r.amh ? { text: r.amh, endVerse: r.amh_end } : null,
+    amh: r.amh ? { text: r.amh, endVerse: r.amh_end, restored: r.amh_restored } : null,
+    movedTo: movedTo(book.osis, chapter, r.verse),
     texts: { ...(textsByOrd.get(r.ord) ?? {}), ...(r.web ? { WEB: r.web } : {}) },
     greek: byOrd.get(r.ord) ?? [],
   }));
