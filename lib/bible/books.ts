@@ -12,6 +12,7 @@ export interface Book {
   name: string;
   slug: string;
   testament: Testament;
+  chapters: number;
   aliases: string[]; // extra spellings accepted by the reference parser
 }
 
@@ -84,6 +85,11 @@ const raw: [osis: string, step: string, usfm: string, name: string, aliases: str
   ["Rev", "Rev", "REV", "Revelation", "re rv apocalypse revelations"],
 ];
 
+// Chapters per book, in canon order (English Bible numbering).
+const CHAPTERS = "50 40 27 36 34 24 21 4 31 24 22 25 29 36 10 13 10 42 150 31 12 8 66 52 5 48 12 14 3 9 1 4 7 3 3 3 2 14 4 28 16 24 21 28 16 16 13 6 6 4 4 5 3 6 4 3 1 13 5 5 3 5 1 1 1 22"
+  .split(" ")
+  .map(Number);
+
 export const BOOKS: Book[] = raw.map(([osis, step, usfm, name, aliases], i) => ({
   id: i + 1,
   osis,
@@ -92,12 +98,24 @@ export const BOOKS: Book[] = raw.map(([osis, step, usfm, name, aliases], i) => (
   name,
   slug: name.toLowerCase().replace(/ /g, "-"),
   testament: i < 39 ? "OT" : "NT",
+  chapters: CHAPTERS[i],
   aliases: aliases.split(" "),
 }));
 
 export const NT_BOOKS = BOOKS.filter((b) => b.testament === "NT");
 
 export const bookBySlug = (slug: string) => BOOKS.find((b) => b.slug === slug);
+
+/**
+ * A New Testament chapter from untrusted input (URL params, request bodies), or null.
+ * The chapter must exist: "John 99" is rejected before it reaches the database, an AI call or a provider.
+ */
+export function ntChapter(slug: unknown, chapter: unknown) {
+  const book = typeof slug === "string" ? bookBySlug(slug) : undefined;
+  const ch = Number(chapter);
+  if (!book || book.testament !== "NT" || !Number.isInteger(ch) || ch < 1 || ch > book.chapters) return null;
+  return { book, chapter: ch };
+}
 export const bookByOsis = (osis: string) => BOOKS.find((b) => b.osis === osis);
 export const bookByStep = (step: string) => BOOKS.find((b) => b.step === step);
 export const bookByUsfm = (usfm: string) => BOOKS.find((b) => b.usfm === usfm);

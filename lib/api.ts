@@ -1,15 +1,10 @@
 import "server-only";
 import { sql } from "@/lib/db";
-import { bookBySlug } from "@/lib/bible/books";
 import { AiBusyError, AiRateLimitError, AiRefusedError, AiUnavailableError } from "@/lib/ai/client";
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status });
 
-export function ntChapter(slug: unknown, chapter: unknown) {
-  const book = typeof slug === "string" ? bookBySlug(slug) : undefined;
-  const ch = Number(chapter);
-  return book && book.testament === "NT" && Number.isInteger(ch) && ch >= 1 ? { book, chapter: ch } : null;
-}
+export { ntChapter } from "@/lib/bible/books";
 
 /** Turn AI failures into honest, user-facing messages. */
 export function aiError(e: unknown) {
