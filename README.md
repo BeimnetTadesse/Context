@@ -110,7 +110,7 @@ Without these keys the app still runs, just without those features.
 
 ### Useful commands
 
-- `npm test`: reference parser, validator, verse-text parser and diff tests.
+- `npm test`: unit tests (reference parser, validator, verse numbering, text parsers, reading view, diff).
 - `npm run study:generate -- "Eph 3" "John 1"`: prepare chapter studies. `-- --all` regenerates every chapter whose prompt version is out of date (resumable).
 - `CONTEXT_CURATOR=1` in `.env.local`: shows the **Verify** button (local curation only; never in production).
 - `bash scripts/sync-neon.sh`: back up production, migrate it, and copy content across while keeping user data.
@@ -125,9 +125,12 @@ lib/bible/            book ids, reference parser, versification, text parsers
 lib/ai/               client, evidence pack, validator, ask / text-or-assumption
 lib/study/generate.ts chapter study: prompt → schema → validate → review → save
 lib/data/             cached queries the pages read
-lib/licensed.ts       licensed versions (API.Bible, YouVersion), renumbered to Context's verse order
+lib/versions.ts       every version, defined once: source, provider id, publisher, script
+lib/licensed.ts       fetches licensed versions (API.Bible, YouVersion), renumbered to Context's verse order
+lib/notices.ts        copyright statements that must appear word for word
 app/                  landing, /study, workspace, /notebook, /sources, /copyright, /audit, /privacy, /api/*
 components/           workspace shell, steps, claims and "Show me why", version toolbar
+components/workspace/read/   the Read step's three views (Greek, compare, flowing) and their text logic
 ```
 
 ## Contributing and license
