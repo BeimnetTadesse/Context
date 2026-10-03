@@ -6,14 +6,16 @@ export const json = (data: unknown, status = 200) => Response.json(data, { statu
 
 export { ntChapter } from "@/lib/bible/books";
 
-/** Turn AI failures into honest, user-facing messages. */
+/** Turn AI failures into honest, user-facing messages. The Ai*Error messages are written by us, for readers. */
 export function aiError(e: unknown) {
   if (e instanceof AiUnavailableError) return json({ error: "ai_unavailable", message: e.message }, 503);
   if (e instanceof AiRateLimitError) return json({ error: "rate_limited", message: e.message }, 429);
   if (e instanceof AiBusyError) return json({ error: "busy", message: e.message }, 503);
   if (e instanceof AiRefusedError) return json({ error: "refused", message: e.message }, 422);
+  // Anything else is unexpected: the details go to the server log, never to the reader
+  // (they can include database or provider internals).
   console.error(e);
-  return json({ error: "failed", message: e instanceof Error ? e.message : "Something went wrong." }, 500);
+  return json({ error: "failed", message: "Something went wrong. Please try again." }, 500);
 }
 
 /**
