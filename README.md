@@ -129,3 +129,10 @@ lib/licensed.ts       licensed versions (API.Bible, YouVersion), renumbered to C
 app/                  landing, /study, workspace, /notebook, /sources, /copyright, /audit, /privacy, /api/*
 components/           workspace shell, steps, claims and "Show me why", version toolbar
 ```
+
+## Contributing and license
+
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+The code is released under the [MIT License](LICENSE). The Bible texts, lexicons, cross-references and commentaries
+are **not** covered by it: each keeps its own license, listed under Sources above and on `/copyright`.
