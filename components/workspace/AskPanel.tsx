@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { LabelPill } from "@/components/ui";
 import type { Label } from "@/lib/labels";
 import { postJson, useStudy } from "@/components/study/context";
@@ -52,13 +52,14 @@ export function AskPanel({ request }: { request: AskRequest | null }) {
     }
   };
 
-  // Requests from the selection popover ("Ask about this", "Text or Assumption?")
+  // Requests from the selection popover ("Ask about this", "Text or Assumption?").
+  // useEffectEvent: the effect re-runs only for a new request, but always calls the latest run().
+  const onRequest = useEffectEvent((r: AskRequest) => void run(r.kind, r.text));
   useEffect(() => {
     if (request && handled.current !== request.nonce) {
       handled.current = request.nonce;
-      void run(request.kind, request.text);
+      onRequest(request);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request]);
 
   const submit = (e: React.FormEvent) => {

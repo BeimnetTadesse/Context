@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isLicensedVersion, isYouVersion, versionInfo, type VersionCode } from "@/lib/versions";
 
 export interface LicensedText {
@@ -32,34 +32,43 @@ function trackView(token: string | null) {
   window.fums("trackView", token);
 }
 
-/** Fetches licensed chapters (NIV/NLT/NASB/NASV) the reader has chosen, reporting API.Bible views to FUMS. */
+/**
+ * Fetches the licensed chapters (NIV, NASV, AMP…) the reader has chosen, reporting API.Bible views to FUMS.
+ * Results are stored by "chapter:version", so a late answer for a chapter the reader has left is harmless,
+ * and turning on a second version never cancels or repeats the first one's request.
+ */
 export function useLicensed(codes: VersionCode[], bookSlug: string, chapter: number) {
-  const wanted = codes.filter((c) => isLicensedVersion(c));
   const key = `${bookSlug}/${chapter}`;
-  const [store, setStore] = useState<{ key: string; texts: Record<string, LicensedText>; failed: string[] }>({ key, texts: {}, failed: [] });
-  const current = store.key === key ? store : { key, texts: {}, failed: [] as string[] };
+  const wanted = codes.filter((c) => isLicensedVersion(c));
+  const wantedKey = wanted.join(",");
+  const [texts, setTexts] = useState<Record<string, LicensedText>>({});
+  const [failed, setFailed] = useState<string[]>([]);
+  const started = useRef(new Set<string>()); // "chapter:version" requested during this visit to the chapter
 
   useEffect(() => {
-    let live = true;
-    for (const code of wanted) {
-      if (current.texts[code] || current.failed.includes(code)) continue;
+    // A new chapter is a new view: forget other chapters' requests so returning re-fetches (and re-reports).
+    for (const id of started.current) if (!id.startsWith(`${key}:`)) started.current.delete(id);
+    for (const code of wantedKey ? wantedKey.split(",") : []) {
+      const id = `${key}:${code}`;
+      if (started.current.has(id)) continue;
+      started.current.add(id);
       fetch(`/api/licensed/${code}/${bookSlug}/${chapter}`)
         .then((r) => (r.ok ? r.json() : Promise.reject()))
         .then((d: LicensedText & { fumsToken: string | null }) => {
-          if (!live) return;
           trackView(d.fumsToken);
           const text = { verses: d.verses, spans: d.spans ?? {}, moved: d.moved ?? {}, publisher: d.publisher ?? null, copyright: d.copyright, trademark: d.trademark ?? null };
-          setStore((s) => ({ key, texts: { ...(s.key === key ? s.texts : {}), [code]: text }, failed: s.key === key ? s.failed : [] }));
+          setTexts((t) => ({ ...t, [id]: text }));
+          setFailed((f) => f.filter((x) => x !== id)); // a retry that works clears an earlier failure
         })
-        .catch(() => live && setStore((s) => ({ key, texts: s.key === key ? s.texts : {}, failed: [...(s.key === key ? s.failed : []), code] })));
+        .catch(() => setFailed((f) => [...f, id]));
     }
-    return () => {
-      live = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wanted.join(","), key]);
+  }, [wantedKey, key, bookSlug, chapter]);
 
-  return { texts: current.texts, failed: current.failed, active: wanted.length > 0 };
+  return {
+    texts: Object.fromEntries(wanted.flatMap((c) => (texts[`${key}:${c}`] ? [[c, texts[`${key}:${c}`]]] : []))) as Record<string, LicensedText>,
+    failed: wanted.filter((c) => failed.includes(`${key}:${c}`)),
+    active: wanted.length > 0,
+  };
 }
 
 const link = "underline underline-offset-2 hover:text-ink";
