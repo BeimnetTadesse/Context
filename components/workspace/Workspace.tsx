@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Dot, Wordmark } from "@/components/ui";
-import { AccountButton, type ViewerInfo } from "@/components/AccountButton";
+import type { ViewerInfo } from "@/components/AccountButton";
 import type { ChapterData, GreekWord } from "@/lib/data/chapter";
 import type { StudyData } from "@/lib/data/study";
-import { LABEL_INFO, LABELS, type Label } from "@/lib/labels";
+import type { Label } from "@/lib/labels";
 import { STEPS, type StepKey } from "@/lib/steps";
 import { studyPath } from "@/lib/bible/refs";
 import { StudyContext } from "@/components/study/context";
@@ -18,8 +17,12 @@ import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
 import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
 import { LicensedNotices, useLicensed } from "./Licensed";
-import { versionInfo, type ReadPrefs } from "@/lib/versions";
+import type { ReadPrefs } from "@/lib/versions";
 import { SelectionPopover } from "./SelectionPopover";
+import { TopBar } from "./TopBar";
+import { MethodNav } from "./MethodNav";
+import { EvidenceLedger } from "./EvidenceLedger";
+import { ProvenanceToggle } from "./ProvenanceToggle";
 
 const STEP_INTRO: Record<StepKey, string> = {
   read: "Read the whole chapter before anything else. Switch to Greek to explore any word.",
@@ -130,7 +133,6 @@ export function Workspace({
   const marks: PhraseMark[] = layer
     ? letters.flatMap((c) => c.anchors.filter((a) => a.quote).map((a) => ({ ord: a.ord, quote: a.quote!, label: c.label, letter: c.letter })))
     : [];
-  const ledgerTotal = LABELS.reduce((n, l) => n + study.ledger[l], 0);
 
   const ctx = useMemo(
     () => ({ book: data.book, chapter: data.chapter, study, curator, trail, setTrail, ask: (q: string) => openAsk("ask", q), setNoteCount }),
@@ -155,113 +157,30 @@ export function Workspace({
   return (
     <StudyContext.Provider value={ctx}>
     <div className="min-h-dvh">
-      {/* Top bar */}
-      <header className="sticky top-0 z-30 border-b border-rule bg-paper/95 backdrop-blur">
-        <div className="flex h-16 items-center gap-2 px-4 sm:gap-4 sm:px-8">
-          <Wordmark />
-          <span className="hidden h-7 w-px bg-rule sm:block" />
-          <button
-            onClick={() => setSwitcher(true)}
-            className="group flex items-baseline gap-2 whitespace-nowrap rounded-lg px-2 py-1 hover:bg-paper-2"
-            title="Go to passage (⌘K)"
-          >
-            <span className="font-serif text-lg sm:text-xl">
-              {data.book.name} {data.chapter}
-            </span>
-            <span className="hidden font-mono text-[0.7rem] tracking-widest text-muted sm:inline">
-              {first}–{last} · {translationLabel}
-            </span>
-            <span className="text-xs text-muted group-hover:text-ink">▾</span>
-          </button>
-
-          <div className="ml-auto flex items-center gap-5">
-            <div className="hidden items-center gap-3 md:flex" aria-label={`Step ${stepIndex + 1} of 7`}>
-              <div className="flex gap-1">
-                {STEPS.map((s, i) => (
-                  <span
-                    key={s.key}
-                    className="h-[3px] w-5 rounded-full"
-                    style={{ background: i === stepIndex ? "var(--accent)" : i < stepIndex ? "var(--ink)" : "var(--rule)" }}
-                  />
-                ))}
-              </div>
-              <span className="font-mono text-xs text-muted">{stepIndex + 1} / 7</span>
-            </div>
-            <Link
-              href="/notebook"
-              className="flex items-center gap-2 rounded-xl border border-rule bg-card px-3 py-2 text-[0.95rem] hover:border-ink sm:px-4"
-              aria-label="Notebook"
-            >
-              <span className="hidden sm:inline">Notebook</span>
-              <span className="sm:hidden">✎</span>
-              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1 font-mono text-[0.65rem] text-paper">
-                {noteCount}
-              </span>
-            </Link>
-            <AccountButton viewer={viewer} />
-          </div>
-        </div>
-
-        {/* Mobile step pills */}
-        <nav className="flex gap-2 overflow-x-auto border-t border-rule px-4 py-3 lg:hidden">
-          {STEPS.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => changeStep(s.key)}
-              className={`shrink-0 rounded-full border px-4 py-2 text-[0.95rem] ${
-                s.key === step ? "border-ink bg-ink text-paper" : "border-rule bg-card"
-              }`}
-            >
-              <span className={`mr-1.5 font-mono text-xs ${s.key === step ? "text-paper/70" : "text-muted"}`}>{s.numeral}</span>
-              {s.name}
-            </button>
-          ))}
-        </nav>
-      </header>
+      <TopBar
+        bookName={data.book.name}
+        chapter={data.chapter}
+        first={first}
+        last={last}
+        translationLabel={translationLabel}
+        step={step}
+        onStep={changeStep}
+        onOpenSwitcher={() => setSwitcher(true)}
+        noteCount={noteCount}
+        viewer={viewer}
+      />
 
       <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[280px_minmax(0,1fr)_340px]">
-        {/* Method nav (desktop) */}
-        <aside className="hidden px-6 py-12 lg:block">
-          <div className="sticky top-24">
-            <p className="eyebrow mb-4 text-muted">Method</p>
-            <nav className="space-y-1">
-              {STEPS.map((s) => {
-                const on = s.key === step;
-                return (
-                  <button
-                    key={s.key}
-                    onClick={() => changeStep(s.key)}
-                    className={`flex w-full items-start gap-4 rounded-xl px-4 py-2.5 text-left transition ${
-                      on ? "bg-card shadow-[0_1px_0_var(--rule),0_8px_24px_-18px_rgba(40,30,20,0.35)]" : "hover:bg-paper-2"
-                    }`}
-                  >
-                    <span className="w-6 pt-0.5 font-mono text-xs text-accent">{s.numeral}</span>
-                    <span className="flex-1">
-                      <span className="block text-[1.02rem]">{s.name}</span>
-                      <span className="block text-sm text-muted">{s.tagline}</span>
-                    </span>
-                    <span
-                      className="mt-2 h-1.5 w-1.5 rounded-full"
-                      style={{ background: on ? "var(--accent)" : "var(--rule)" }}
-                    />
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="mt-3 border-t border-rule pt-3">
-              <p className="eyebrow mb-1 text-muted">Passage</p>
-              <p className="font-serif text-xl">
-                {data.book.name} {data.chapter}:{first}–{last}
-              </p>
-              <p className="mt-1 text-sm leading-relaxed text-muted">
-                {data.verses.length} verses ·{" "}
-                {prefs.greek ? "Greek · SBLGNT" : [prefs.primary, ...prefs.compare].map((c) => versionInfo(c).short).join(" · ")}
-              </p>
-              <p className="mt-1.5 font-mono text-[0.68rem] text-muted">⌘K go to · 1–7 steps</p>
-            </div>
-          </div>
-        </aside>
+        <MethodNav
+          step={step}
+          onStep={changeStep}
+          bookName={data.book.name}
+          chapter={data.chapter}
+          first={first}
+          last={last}
+          verseCount={data.verses.length}
+          prefs={prefs}
+        />
 
         {/* Step */}
         <main className="min-w-0 px-5 py-10 sm:px-10 lg:py-12">
@@ -270,47 +189,13 @@ export function Workspace({
           </p>
           <h1 className="mt-3 font-serif text-[clamp(2.4rem,4vw,3.2rem)] leading-tight">{current.name}</h1>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-2">{STEP_INTRO[step]}</p>
-          {ledgerTotal > 0 && (
-            <div className="mt-6 max-w-2xl" aria-label="Evidence ledger">
-              <div className="flex h-1.5 overflow-hidden rounded-full bg-rule">
-                {LABELS.filter((l) => study.ledger[l]).map((l) => (
-                  <span key={l} style={{ flex: study.ledger[l], background: `var(--l-${l})` }} />
-                ))}
-              </div>
-              <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[0.68rem] uppercase tracking-widest text-muted">
-                <span className="text-ink-2">{data.book.name} {data.chapter} ·</span>
-                {LABELS.filter((l) => study.ledger[l]).map((l) => (
-                  <span key={l} className="flex items-center gap-1.5"><Dot label={l} size={6} />{study.ledger[l]} {LABEL_INFO[l].short}</span>
-                ))}
-                {study.claims.every((c) => c.status !== "verified") && <span>· all unverified</span>}
-                {study.withheld > 0 && <span title="Claims the second reader judged not supported by their evidence">· {study.withheld} withheld after review</span>}
-              </p>
-            </div>
-          )}
+          <EvidenceLedger study={study} bookName={data.book.name} chapter={data.chapter} />
 
           {step === "read" ? (
             <>
               <div className="mt-8 flex flex-wrap items-start justify-between gap-4 border-y border-rule py-3">
                 <VersionToolbar prefs={prefs} onChange={changePrefs} />
-                {(() => {
-                  const layerAvailable = letters.length > 0 && prefs.primary === "WEB" && !prefs.greek;
-                  const layerOn = layer && layerAvailable;
-                  return (
-                <button
-                  onClick={() => setLayer(!layer)}
-                  disabled={!layerAvailable}
-                  role="switch"
-                  aria-checked={layerOn}
-                  className="flex items-center gap-3 text-sm disabled:cursor-not-allowed disabled:text-muted"
-                  title={!letters.length ? "Appears once this chapter's study is prepared" : prefs.primary !== "WEB" ? "Underlines follow the WEB wording — choose WEB as your main version" : "Underline key phrases by provenance label"}
-                >
-                  <span className={`relative h-6 w-11 rounded-full transition ${layerOn ? "bg-ink" : "bg-rule"}`}>
-                    <span className={`absolute top-1 h-4 w-4 rounded-full bg-card transition-all ${layerOn ? "left-6" : "left-1"}`} />
-                  </span>
-                  Provenance layer
-                </button>
-                  );
-                })()}
+                <ProvenanceToggle on={layer} onToggle={() => setLayer(!layer)} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />
               </div>
               {!prefs.greek && (
                 <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Tap a verse number for the commentators · Select any phrase to ask</p>
