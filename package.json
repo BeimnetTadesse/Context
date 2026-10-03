@@ -19,7 +19,8 @@
     "data:amharic": "tsx scripts/fetch-wordproject-amh.ts",
     "db:commentaries": "tsx scripts/import-commentaries.ts",
     "db:translations": "tsx scripts/import-translations.ts",
-    "db:amharic": "tsx scripts/import-amharic-restore.ts"
+    "db:amharic": "tsx scripts/import-amharic-restore.ts",
+    "cache:warm": "tsx scripts/warm-cache.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

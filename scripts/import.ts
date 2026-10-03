@@ -7,6 +7,7 @@ config({ path: ".env.local" });
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";
+import { AMHARIC_1962_NOTICE } from "../lib/notices";
 import { BOOKS, bookByOsis, bookByStep } from "../lib/bible/books";
 import { toWeb } from "../lib/bible/versification";
 import { parseUsfm } from "../lib/bible/usfm";
@@ -29,8 +30,7 @@ const SOURCES = [
     source_type: "Primary text · translation", orientation: "Ethiopian (Haile Selassie translation)",
     license: "Non-commercial use with full copyright statement",
     can_display: true,
-    notes:
-      "copyright © 1962, 2003 United Bible Societies. Revised Amharic Bible in XML (2003). Printed version by United Bible Societies (C)1962. E-Text in transliterated ASCII format by Lapsley/Brooks Foundation 1994. Unicode UTF-8 transformation and XML-tagging by Dirk Röckmann 2003 (www.nt-text.net). With kind permission of the Bible Society of Ethiopia. Every non-commercial work using this data in any form must fully include this copyright statement! Every commercial use of parts or the complete data in any form needs written permission of the Bible Society of Ethiopia!",
+    notes: AMHARIC_1962_NOTICE,
   },
   {
     key: "SBLGNT", title: "SBL Greek New Testament (words marked SBL in STEP TAGNT)", author: "Michael W. Holmes (ed.)",

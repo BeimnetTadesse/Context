@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Wordmark } from "@/components/ui";
+import { AMHARIC_1962_NOTICE } from "@/lib/notices";
 import { VERSIONS } from "@/lib/versions";
 import { youVersionNotice } from "@/lib/youversion";
 
@@ -28,8 +29,6 @@ async function youVersionNotices() {
   ).then((all) => all.filter((n) => n !== null));
 }
 
-const AMHARIC =
-  "copyright © 1962, 2003 United Bible Societies. Revised Amharic Bible in XML (2003). Printed version by United Bible Societies (C)1962. E-Text in transliterated ASCII format by Lapsley/Brooks Foundation 1994. Unicode UTF-8 transformation and XML-tagging by Dirk Röckmann 2003 (www.nt-text.net). With kind permission of the Bible Society of Ethiopia. Every non-commercial work using this data in any form must fully include this copyright statement! Every commercial use of parts or the complete data in any form needs written permission of the Bible Society of Ethiopia!";
 
 export default async function Copyright() {
   const [notices, yv] = await Promise.all([licensedNotices(), youVersionNotices()]);
@@ -87,7 +86,7 @@ export default async function Copyright() {
 
         <h2 className="mt-12 font-serif text-2xl">Amharic</h2>
         <p className="mt-2 font-serif text-lg">Amharic Bible (1962), New Testament</p>
-        <p className="mt-1 text-sm leading-relaxed text-ink-2">{AMHARIC}</p>
+        <p className="mt-1 text-sm leading-relaxed text-ink-2">{AMHARIC_1962_NOTICE}</p>
         <p className="mt-2 text-sm leading-relaxed text-ink-2">
           The eBible.org e-text is missing some verses. Those (marked ◦ in the reader) were restored from{" "}
           <a href="https://www.wordproject.org/bibles/am/index.htm" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">WordProject’s copy</a>{" "}

@@ -21,13 +21,9 @@ async function get(url: string, tries = 4): Promise<unknown> {
 
 async function main() {
   const jobs: { id: string; book: string; chapter: number | "books" }[] = [];
-  const chapters: Record<string, number> = {
-    MAT: 28, MRK: 16, LUK: 24, JHN: 21, ACT: 28, ROM: 16, "1CO": 16, "2CO": 13, GAL: 6, EPH: 6, PHP: 4, COL: 4,
-    "1TH": 5, "2TH": 3, "1TI": 6, "2TI": 4, TIT: 3, PHM: 1, HEB: 13, JAS: 5, "1PE": 5, "2PE": 3, "1JN": 5, "2JN": 1, "3JN": 1, JUD: 1, REV: 22,
-  };
   for (const id of COMMENTARIES) {
     jobs.push({ id, book: "_", chapter: "books" });
-    for (const b of NT_BOOKS) for (let c = 1; c <= chapters[b.usfm]; c++) jobs.push({ id, book: b.usfm, chapter: c });
+    for (const b of NT_BOOKS) for (let c = 1; c <= b.chapters; c++) jobs.push({ id, book: b.usfm, chapter: c });
   }
 
   let done = 0, fetched = 0, missing = 0;

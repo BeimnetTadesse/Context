@@ -114,7 +114,7 @@ Without these keys the app still runs, just without those features.
 - `npm run study:generate -- "Eph 3" "John 1"`: prepare chapter studies. `-- --all` regenerates every chapter whose prompt version is out of date (resumable).
 - `CONTEXT_CURATOR=1` in `.env.local`: shows the **Verify** button (local curation only; never in production).
 - `bash scripts/sync-neon.sh`: back up production, migrate it, and copy content across while keeping user data.
-- `bash scripts/warm-cache.sh`: pre-load all 260 chapters after a deploy.
+- `npm run cache:warm`: pre-load all 260 chapters after a deploy (add `-- <url>` for a preview deployment).
 
 ## Project map
 

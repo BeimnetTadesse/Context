@@ -9,6 +9,7 @@ import type { GreekWord } from "@/lib/data/chapter";
 import type { ClaimView } from "@/lib/data/study";
 import type { StepKey } from "@/lib/steps";
 import { AskPanel, type AskRequest } from "./AskPanel";
+import { AMHARIC_1962_NOTICE } from "@/lib/notices";
 import { isLicensedVersion, versionInfo, type ReadPrefs } from "@/lib/versions";
 
 interface Lexicon {
@@ -40,8 +41,6 @@ function translationSources(p: ReadPrefs): Cited[] {
 }
 const showsAmharic = (p: ReadPrefs) => !p.greek && (p.primary === "AMH" || p.compare.includes("AMH"));
 
-const AMHARIC_NOTICE =
-  "copyright © 1962, 2003 United Bible Societies. Revised Amharic Bible in XML (2003). Printed version by United Bible Societies (C)1962. E-Text in transliterated ASCII format by Lapsley/Brooks Foundation 1994. Unicode UTF-8 transformation and XML-tagging by Dirk Röckmann 2003 (www.nt-text.net). With kind permission of the Bible Society of Ethiopia. Every non-commercial work using this data in any form must fully include this copyright statement! Every commercial use of parts or the complete data in any form needs written permission of the Bible Society of Ethiopia!";
 
 function LexiconCard({ word, onClose }: { word: GreekWord; onClose: () => void }) {
   // The parent keys this component by word, so state starts fresh for each word.
@@ -232,7 +231,7 @@ export function Margin({
           <a href="/sources" className="mt-2 inline-block text-xs text-muted underline underline-offset-4 hover:text-ink">All sources →</a>
           {step === "read" && showsAmharic(prefs) && (
             <>
-              <p className="mt-3 text-[0.7rem] leading-relaxed text-muted">{AMHARIC_NOTICE}</p>
+              <p className="mt-3 text-[0.7rem] leading-relaxed text-muted">{AMHARIC_1962_NOTICE}</p>
               <p className="mt-2 text-[0.7rem] leading-relaxed text-muted">
                 Verses marked ◦ were missing from that e-text and are restored from WordProject’s copy of the same translation (wordproject.org).
               </p>
