@@ -29,7 +29,6 @@ async function main() {
   const refOf = new Map(verses.map((v) => [v.ord, v]));
   const amh = await sql<{ ord: number; end_ord: number | null; text: string; para: boolean; source_id: number | null }[]>`
     select ord, end_ord, text, para, source_id from verse_texts where translation_code = 'AMH'`;
-  const amhAt = new Map(amh.map((r) => [r.ord, r]));
   const coveredBy = new Map<number, number>(); // ord → row ord whose text includes it
   for (const r of amh) for (let o = r.ord; o <= (r.end_ord ?? r.ord); o++) coveredBy.set(o, r.ord);
 

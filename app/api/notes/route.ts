@@ -16,7 +16,12 @@ export async function POST(req: Request) {
     return r?.ord ?? null;
   };
   const start = await ord(b.verse);
-  const itemId = Number.isInteger(b.itemId) ? b.itemId : null;
+  const itemId = Number.isInteger(b.itemId) ? (b.itemId as number) : null;
+  if (itemId) {
+    // Must be a reflection prompt of this chapter; otherwise the insert would fail with a server error.
+    const [item] = await sql`select 1 from reflection_items where id = ${itemId} and book_id = ${target.book.id} and chapter = ${target.chapter}`;
+    if (!item) return json({ error: "bad_request" }, 400);
+  }
   // One answer per prompt: re-saving replaces it.
   if (itemId) await sql`delete from notes where user_id = ${userId} and item_id = ${itemId}`;
   const [row] = await sql<{ id: number }[]>`
