@@ -104,8 +104,9 @@ export function Workspace({
         setSwitcher(true);
         return;
       }
-      const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, [contenteditable]") || e.metaKey || e.ctrlKey || e.altKey) return;
+      // Typing in a field isn't a shortcut. (The target can be the document itself, which has no closest().)
+      const typing = e.target instanceof Element && e.target.closest("input, textarea, [contenteditable]");
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
       const n = Number(e.key);
       if (n >= 1 && n <= 7) changeStep(STEPS[n - 1].key);
     };
