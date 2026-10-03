@@ -9,7 +9,7 @@ Live: **https://context-black.vercel.app** · Product #2 of *3 Products in 30 Da
 - **All 260 NT chapters**, each with a prepared study, in seven steps and in this order: Read · Observe · Context · Language · Connections · Interpretations · Reflect.
 - **Many versions, side by side.**
   - Stored locally: WEB, BSB, KJV, ASV, YLT and the Amharic 1962 (1954 E.C.) Bible.
-  - Fetched live, display only: NIV, NLT, NASB 2020 and the New Amharic Standard Version (NASV).
+  - Fetched live, display only: NIV, NLT, NASB 2020, the Amplified Bible (AMP), The Passion Translation (TPT) and the New Amharic Standard Version (NASV).
   - A Greek interlinear (SBLGNT); tap any word for its lexicon entry.
   - Compare up to three versions at once. Words that differ are highlighted, but only between texts in the same script.
 - **Six provenance labels** on every claim: Explicit · Inference · Historical · Scholarly · Tradition · Personal.
@@ -56,7 +56,7 @@ open-licensed data ──► Postgres ──► evidence pack (V: verses, L: lex
 
 Every model call is logged in `ai_runs`: the evidence it saw, the prompt version, and what the validator removed. The `/audit` page shows the review results for every chapter.
 
-**Licensed text never reaches the AI.** NIV, NLT, NASB and NASV are fetched when a reader chooses them, cached for at most a day, never stored in the database, and can't be copied. Selecting them offers only "Ask about verse N", which sends the reference, never the wording.
+**Licensed text never reaches the AI.** NIV, NLT, NASB, AMP, TPT and NASV are fetched when a reader chooses them, cached for at most a day, never stored in the database, and can't be copied. Selecting them offers only "Ask about verse N", which sends the reference, never the wording.
 
 ## Sources
 
@@ -67,6 +67,7 @@ Every model call is logged in `ai_runs`: the evidence it saw, the prompt version
 | WordProject copy of the same Amharic Bible | 842 verses missing from the eBible e-text, marked ◦ in the reader | Non-profit use permitted by WordProject |
 | NIV, NLT, NASB 2020 via [API.Bible](https://api.bible) | Licensed English versions | Non-commercial; display only; usage reported (FUMS) |
 | New Amharic Standard Version 2024 (Biblica) via the [YouVersion Platform](https://platform.youversion.com) | Modern Amharic | Non-commercial; display only; no AI use |
+| Amplified Bible (Lockman Foundation) and The Passion Translation 2020 NT (BroadStreet Publishing) via the YouVersion Platform | Licensed English versions | Non-commercial; display only |
 | SBL Greek New Testament | Greek text | CC BY 4.0 |
 | STEP Bible TAGNT, TBESG (Tyndale House, Cambridge) | Greek tagging, glosses, Abbott-Smith lexicon | CC BY 4.0 |
 | OpenBible.info cross-references | Connections | CC BY |
@@ -100,7 +101,7 @@ npm run dev             # http://localhost:3000
 
 Optional keys in `.env.local` (see `.env.example`):
 - `API_BIBLE_KEY` for NIV, NLT and NASB.
-- `YVP_APP_KEY` for NASV. This needs Biblica's licence accepted in the YouVersion Platform dashboard.
+- `YVP_APP_KEY` for NASV, AMP and TPT. This needs the Biblica, Lockman and BroadStreet licences accepted in the YouVersion Platform dashboard.
 - `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` for sign-in.
 
 Without these keys the app still runs, just without those features.

@@ -24,7 +24,7 @@ async function youVersionNotices() {
   return Promise.all(
     Object.entries(YOUVERSION).map(async ([code, v]) => {
       const n = await youVersionNotice(v.bibleId);
-      return n && { code, ...n };
+      return n && { code, ...n, publisher: v.publisher };
     }),
   ).then((all) => all.filter((n) => n !== null));
 }
@@ -67,22 +67,27 @@ export default async function Copyright() {
           {notices.length === 0 && <li className="text-sm text-muted">Licensed translations are not enabled on this deployment.</li>}
         </ul>
 
+        <p className="mt-8 text-ink-2">
+          Provided through the{" "}
+          <a href="https://platform.youversion.com" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">YouVersion Platform</a>{" "}
+          for non-commercial reading, under each publisher’s licence: not stored by Context, cannot be copied, and never sent to any AI system.
+        </p>
+        <ul className="mt-4 space-y-4">
+          {yv.map((n) => (
+            <li key={n.code} className="rounded-xl border border-rule bg-card p-4">
+              <p className="font-serif text-lg">{n.title} ({n.code})</p>
+              <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink-2">{n.copyright}</p>
+              {n.trademark && <p className="mt-2 text-sm leading-relaxed text-ink-2">{n.trademark}</p>}
+              <p className="mt-2 text-sm text-ink-2">
+                Published by{" "}
+                <a href={n.publisher.url} className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">{n.publisher.name}</a>
+              </p>
+            </li>
+          ))}
+        </ul>
+
         <h2 className="mt-12 font-serif text-2xl">Amharic</h2>
-        {yv.map((n) => (
-          <div key={n.code} className="mt-4 rounded-xl border border-rule bg-card p-4">
-            <p className="font-serif text-lg">{n.title} ({n.code})</p>
-            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink-2">{n.copyright}</p>
-            {n.trademark && <p className="mt-2 text-sm leading-relaxed text-ink-2">{n.trademark}</p>}
-            <p className="mt-2 text-sm text-ink-2">
-              Provided through the{" "}
-              <a href="https://platform.youversion.com" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">YouVersion Platform</a>{" "}
-              for non-commercial reading. Published by{" "}
-              <a href="https://www.biblica.com" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">Biblica, Inc.</a>{" "}
-              Not stored by Context, cannot be copied, and never sent to any AI system.
-            </p>
-          </div>
-        ))}
-        <p className="mt-6 font-serif text-lg">Amharic Bible (1962), New Testament</p>
+        <p className="mt-2 font-serif text-lg">Amharic Bible (1962), New Testament</p>
         <p className="mt-1 text-sm leading-relaxed text-ink-2">{AMHARIC}</p>
         <p className="mt-2 text-sm leading-relaxed text-ink-2">
           The eBible.org e-text is missing some verses. Those (marked ◦ in the reader) were restored from{" "}

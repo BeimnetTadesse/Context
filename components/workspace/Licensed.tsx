@@ -11,6 +11,7 @@ export interface LicensedText {
   spans: Record<number, number>;
   /** Verses printed here by this version that Context places elsewhere: verse → "14:24". */
   moved: Record<number, string>;
+  publisher: { name: string; url: string } | null;
   copyright: string;
   trademark: string | null;
 }
@@ -47,7 +48,7 @@ export function useLicensed(codes: VersionCode[], bookSlug: string, chapter: num
         .then((d: LicensedText & { fumsToken: string | null }) => {
           if (!live) return;
           trackView(d.fumsToken);
-          const text = { verses: d.verses, spans: d.spans ?? {}, moved: d.moved ?? {}, copyright: d.copyright, trademark: d.trademark ?? null };
+          const text = { verses: d.verses, spans: d.spans ?? {}, moved: d.moved ?? {}, publisher: d.publisher ?? null, copyright: d.copyright, trademark: d.trademark ?? null };
           setStore((s) => ({ key, texts: { ...(s.key === key ? s.texts : {}), [code]: text }, failed: s.key === key ? s.failed : [] }));
         })
         .catch(() => live && setStore((s) => ({ key, texts: s.key === key ? s.texts : {}, failed: [...(s.key === key ? s.failed : []), code] })));
@@ -79,9 +80,12 @@ export function LicensedNotices({ codes, texts }: { codes: VersionCode[]; texts:
               <span className="font-mono text-accent">{versionInfo(c).short}</span> — {texts[c]?.copyright ?? versionInfo(c).name}
             </p>
             {texts[c]?.trademark && <p className="mt-1">{texts[c].trademark}</p>}
-            {isYouVersion(c) && (
+            {texts[c]?.publisher && (
               <p className="mt-1">
-                Published by <a href="https://www.biblica.com" target="_blank" rel="noreferrer" className={link}>Biblica, Inc. (biblica.com)</a>
+                Published by{" "}
+                <a href={texts[c].publisher!.url} target="_blank" rel="noreferrer" className={link}>
+                  {texts[c].publisher!.name} ({texts[c].publisher!.url.replace(/^https:\/\/(www\.)?/, "")})
+                </a>
               </p>
             )}
           </div>

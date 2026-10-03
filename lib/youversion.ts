@@ -29,6 +29,7 @@ export async function youVersionNotice(bibleId: number): Promise<{ title: string
   const d = (await r.json()) as { title: string; copyright: string | null; promotional_content: string | null };
   // The trademark lines sit in the promotional text after the copyright block ("… are trademarks registered …").
   const lines = (d.promotional_content ?? "").split("\n").map((l) => l.replace(/[‪-‮]/g, "").trim());
-  const trademark = lines.filter((l) => /trademark/i.test(l)).join(" ");
+  // Skip long promotional paragraphs and anything the copyright notice already says.
+  const trademark = lines.filter((l) => /trademark/i.test(l) && l.length <= 300 && !(d.copyright ?? "").includes(l)).join(" ");
   return { title: d.title, copyright: (d.copyright ?? "").trim(), trademark };
 }

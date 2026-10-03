@@ -7,7 +7,9 @@ import { fetchYouVersionChapter, youVersionNotice } from "./youversion";
 // Every licensed translation, by provider. All are display-only: fetched live, cached ≤ 1 day, never stored in
 // our database, never copyable, and never sent to any AI system.
 export const YOUVERSION = {
-  NASV: { bibleId: 1260, name: "New Amharic Standard Version 2024" },
+  NASV: { bibleId: 1260, name: "New Amharic Standard Version 2024", publisher: { name: "Biblica, Inc.", url: "https://www.biblica.com" } },
+  AMP: { bibleId: 1588, name: "Amplified Bible", publisher: { name: "The Lockman Foundation", url: "https://www.lockman.org" } },
+  TPT: { bibleId: 1849, name: "The Passion Translation", publisher: { name: "BroadStreet Publishing", url: "https://broadstreetpublishing.com" } },
 } as const;
 type YouVersionCode = keyof typeof YOUVERSION;
 
@@ -25,6 +27,8 @@ export interface LicensedChapter {
   trademark: string | null;
   /** API.Bible usage reporting token (YouVersion reports usage server-side). */
   fumsToken: string | null;
+  /** Publisher to link wherever the text is shown (YouVersion licences require it). */
+  publisher: { name: string; url: string } | null;
 }
 
 /** Other standard-numbered chapters with verses the WEB prints in this chapter (e.g. Rom 16:25–27 → Rom 14). */
@@ -87,11 +91,11 @@ export async function fetchLicensedChapter(code: LicensedCode, book: Pick<Book, 
 
 async function fetchFrom(code: LicensedCode, usfm: string, chapter: number): Promise<Omit<LicensedChapter, "moved"> | null> {
   if (code in YOUVERSION) {
-    const { bibleId } = YOUVERSION[code as YouVersionCode];
+    const { bibleId, publisher } = YOUVERSION[code as YouVersionCode];
     const [text, notice] = await Promise.all([fetchYouVersionChapter(bibleId, usfm, chapter), youVersionNotice(bibleId)]);
     if (!text || !notice) return null;
-    return { code, ...text, copyright: notice.copyright, trademark: notice.trademark || null, fumsToken: null };
+    return { code, ...text, copyright: notice.copyright, trademark: notice.trademark || null, fumsToken: null, publisher };
   }
   const d = await fetchApiBibleChapter(code as ApiBibleCode, usfm, chapter);
-  return d && { code, verses: d.verses, spans: {}, copyright: d.copyright, trademark: null, fumsToken: d.fumsToken };
+  return d && { code, verses: d.verses, spans: {}, copyright: d.copyright, trademark: null, fumsToken: d.fumsToken, publisher: null };
 }
