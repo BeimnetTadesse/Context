@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Wordmark } from "@/components/ui";
-import { API_BIBLE } from "@/lib/apibible";
-import { YOUVERSION } from "@/lib/licensed";
+import { VERSIONS } from "@/lib/versions";
 import { youVersionNotice } from "@/lib/youversion";
 
 export const metadata: Metadata = { title: "Copyright · Context" };
@@ -12,19 +11,19 @@ async function licensedNotices() {
   const key = process.env.API_BIBLE_KEY;
   if (!key) return [];
   return Promise.all(
-    Object.entries(API_BIBLE).map(async ([code, v]) => {
-      const r = await fetch(`https://rest.api.bible/v1/bibles/${v.bibleId}`, { headers: { "api-key": key }, next: { revalidate: 86400 } }).catch(() => null);
+    VERSIONS.flatMap((v) => (v.source.kind === "apibible" ? [{ code: v.code, name: v.name, bibleId: v.source.bibleId }] : [])).map(async ({ code, name, bibleId }) => {
+      const r = await fetch(`https://rest.api.bible/v1/bibles/${bibleId}`, { headers: { "api-key": key }, next: { revalidate: 86400 } }).catch(() => null);
       const d = r?.ok ? ((await r.json()) as { data: { name: string; copyright: string } }).data : null;
-      return { code, name: d?.name ?? v.name, copyright: d?.copyright ?? "" };
+      return { code, name: d?.name ?? name, copyright: d?.copyright ?? "" };
     }),
   );
 }
 
 async function youVersionNotices() {
   return Promise.all(
-    Object.entries(YOUVERSION).map(async ([code, v]) => {
-      const n = await youVersionNotice(v.bibleId);
-      return n && { code, ...n, publisher: v.publisher };
+    VERSIONS.flatMap((v) => (v.source.kind === "youversion" ? [{ code: v.code, ...v.source }] : [])).map(async ({ code, bibleId, publisher }) => {
+      const n = await youVersionNotice(bibleId);
+      return n && { code, ...n, publisher };
     }),
   ).then((all) => all.filter((n) => n !== null));
 }

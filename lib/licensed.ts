@@ -1,20 +1,14 @@
 import "server-only";
-import { API_BIBLE, fetchApiBibleChapter, type ApiBibleCode } from "./apibible";
+import { fetchApiBibleChapter } from "./apibible";
 import type { Book } from "./bible/books";
 import { feederChapters, renumberToWeb } from "./bible/versification";
+import { isLicensedVersion, isVersion, versionInfo, type VersionCode } from "./versions";
 import { fetchYouVersionChapter, youVersionNotice } from "./youversion";
 
-// Every licensed translation, by provider. All are display-only: fetched live, cached ≤ 1 day, never stored in
-// our database, never copyable, and never sent to any AI system.
-export const YOUVERSION = {
-  NASV: { bibleId: 1260, name: "New Amharic Standard Version 2024", publisher: { name: "Biblica, Inc.", url: "https://www.biblica.com" } },
-  AMP: { bibleId: 1588, name: "Amplified Bible", publisher: { name: "The Lockman Foundation", url: "https://www.lockman.org" } },
-  TPT: { bibleId: 1849, name: "The Passion Translation", publisher: { name: "BroadStreet Publishing", url: "https://broadstreetpublishing.com" } },
-} as const;
-type YouVersionCode = keyof typeof YOUVERSION;
-
-export type LicensedCode = ApiBibleCode | YouVersionCode;
-export const isLicensed = (c: unknown): c is LicensedCode => typeof c === "string" && (c in API_BIBLE || c in YOUVERSION);
+// Licensed translations (listed in lib/versions.ts) are display-only: fetched live, cached ≤ 1 day, never stored
+// in our database, never copyable, and never sent to any AI system.
+export type LicensedCode = VersionCode;
+export const isLicensed = (c: unknown): c is LicensedCode => isVersion(c) && isLicensedVersion(c);
 
 export interface LicensedChapter {
   code: LicensedCode;
@@ -45,12 +39,13 @@ export async function fetchLicensedChapter(code: LicensedCode, book: Pick<Book, 
 }
 
 async function fetchFrom(code: LicensedCode, usfm: string, chapter: number): Promise<Omit<LicensedChapter, "moved"> | null> {
-  if (code in YOUVERSION) {
-    const { bibleId, publisher } = YOUVERSION[code as YouVersionCode];
-    const [text, notice] = await Promise.all([fetchYouVersionChapter(bibleId, usfm, chapter), youVersionNotice(bibleId)]);
+  const { source } = versionInfo(code);
+  if (source.kind === "youversion") {
+    const [text, notice] = await Promise.all([fetchYouVersionChapter(source.bibleId, usfm, chapter), youVersionNotice(source.bibleId)]);
     if (!text || !notice) return null;
-    return { code, ...text, copyright: notice.copyright, trademark: notice.trademark || null, fumsToken: null, publisher };
+    return { code, ...text, copyright: notice.copyright, trademark: notice.trademark || null, fumsToken: null, publisher: source.publisher };
   }
-  const d = await fetchApiBibleChapter(code as ApiBibleCode, usfm, chapter);
+  if (source.kind !== "apibible") return null;
+  const d = await fetchApiBibleChapter(source.bibleId, usfm, chapter);
   return d && { code, verses: d.verses, spans: {}, copyright: d.copyright, trademark: null, fumsToken: d.fumsToken, publisher: null };
 }

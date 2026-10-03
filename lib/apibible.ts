@@ -3,12 +3,7 @@ import "server-only";
 // Licensed translations via API.Bible (Starter plan, non-commercial).
 // Terms we follow: fetched live and cached ≤ 1 day (never stored in our database), shown unaltered,
 // copyright notice + api.bible link displayed, usage reported via FUMS, and NEVER sent to any AI system.
-export const API_BIBLE = {
-  NIV: { bibleId: "78a9f6124f344018-01", name: "New International Version (2011)" },
-  NLT: { bibleId: "d6e14a625393b4da-01", name: "New Living Translation" },
-  NASB: { bibleId: "a761ca71e0b3ddcf-01", name: "New American Standard Bible 2020" },
-} as const;
-export type ApiBibleCode = keyof typeof API_BIBLE;
+// Which versions, and their bibleIds, are listed in lib/versions.ts.
 
 const BASE = "https://rest.api.bible/v1";
 
@@ -38,10 +33,10 @@ function collect(nodes: Node[], out: Record<number, string>) {
   }
 }
 
-export async function fetchApiBibleChapter(code: ApiBibleCode, usfm: string, chapter: number): Promise<ApiBibleChapter | null> {
+export async function fetchApiBibleChapter(bibleId: string, usfm: string, chapter: number): Promise<ApiBibleChapter | null> {
   const key = process.env.API_BIBLE_KEY;
   if (!key) return null;
-  const url = `${BASE}/bibles/${API_BIBLE[code].bibleId}/chapters/${usfm}.${chapter}?content-type=json&include-notes=false&include-titles=false&include-chapter-numbers=false&include-verse-numbers=true&include-verse-spans=false`;
+  const url = `${BASE}/bibles/${bibleId}/chapters/${usfm}.${chapter}?content-type=json&include-notes=false&include-titles=false&include-chapter-numbers=false&include-verse-numbers=true&include-verse-spans=false`;
   const r = await fetch(url, { headers: { "api-key": key }, next: { revalidate: 86400 } }); // ≤ 1 day, well within the 30-day rule
   if (!r.ok) return null;
   const body = (await r.json()) as { data: { content: Node[]; copyright: string }; meta?: { fumsToken?: string } };
