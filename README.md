@@ -1,37 +1,48 @@
 # Context
 
-**Understand before you interpret.** A study workspace for the New Testament: the text first, then its structure, history, language and the range of credible interpretation — with every claim labelled and every source shown.
+**Understand before you interpret.** A study workspace for the New Testament: the text first, then its structure, history, language and the range of credible interpretation, with every claim labelled and every source shown.
 
-Product #2 of *3 Products in 30 Days*.
+Live: **https://context-black.vercel.app** · Product #2 of *3 Products in 30 Days*.
 
 ## What it does
 
-- **All 260 NT chapters** in English (WEB), Amharic (1962), side by side, or as a Greek interlinear. Tap any Greek word for its lexicon entry.
-- **Seven steps, in order:** Read · Observe · Context · Language · Connections · Interpretations · Reflect.
-- **Six provenance labels** on every claim: Explicit · Strong inference · Historical evidence · Scholarly interpretation · Tradition · Personal reflection.
-- **Show me why** on every claim: claim → evidence verse → source (tier, orientation, locator) → how it was produced.
-- **Text or Assumption?** — a quiz that asks you to label statements before revealing the answer, plus a checker for your own statements.
-- **Ask** — questions answered only from Context's evidence, sentence-by-sentence labelled and cited, or an honest "not enough evidence".
-- **Notebook** — private reflections, kept apart from claims, and your assumption score.
+- **All 260 NT chapters**, each with a prepared study, in seven steps and in this order: Read · Observe · Context · Language · Connections · Interpretations · Reflect.
+- **Many versions, side by side.**
+  - Stored locally: WEB, BSB, KJV, ASV, YLT and the Amharic 1962 (1954 E.C.) Bible.
+  - Fetched live, display only: NIV, NLT, NASB 2020 and the New Amharic Standard Version (NASV).
+  - A Greek interlinear (SBLGNT); tap any word for its lexicon entry.
+  - Compare up to three versions at once. Words that differ are highlighted, but only between texts in the same script.
+- **Six provenance labels** on every claim: Explicit · Inference · Historical · Scholarly · Tradition · Personal.
+- **Commentators on every verse:** Calvin, Matthew Henry, Gill, Clarke, Jamieson-Fausset-Brown and the Tyndale Open Study Notes, with book introductions.
+- **Show me why** on every claim: claim → evidence → source (tier, orientation, locator) → how it was produced.
+- **Ask:** select any phrase or type a question. Answers come only from the chapter's evidence, are labelled and cited piece by piece, or say honestly "not enough evidence".
+- **Text or Assumption?:** a quiz that asks you to label statements before revealing the answer, plus a checker for your own statements.
+- **Notebook and sign-in:** private notes and reflections, kept apart from claims. Sign in with Google to keep them across devices.
 
 ## The trust architecture
 
-**The AI is not the database.** Claude never supplies facts; it arranges evidence we hand it.
+**The AI is not the database.** It never supplies Bible text or facts; it arranges evidence we hand it, and code checks everything it writes.
 
 ```
-open-licensed data ──► Postgres ──► evidence pack (V: verses, L: lexicon, X: cross-refs, C: claims)
+open-licensed data ──► Postgres ──► evidence pack (V: verses, L: lexicon, X: cross-refs,
+                                                   K: commentary paragraphs, C: verified claims)
                                           │
                                           ▼
-                    Gemini or Claude (JSON-schema structured output)
+                       Gemini (JSON-schema structured output)
                                           │
                                           ▼
-                      validator (lib/ai/validate.ts — pure, unit-tested)
-                        · citations must exist in the evidence pack
-                        · no citation → claim dropped
-                        · "explicit" must cite a verse
-                        · "historical" must cite lexical evidence
-                        · quotes must appear word-for-word in the verse
-                        · "God is telling you…" language is rejected
+                     validator (lib/ai/validate.ts: pure, unit-tested)
+                       · citations must exist in the evidence pack
+                       · no citation → claim dropped
+                       · "explicit" must cite a verse
+                       · "historical" must cite lexical or scholarly evidence
+                       · verse quotes must appear word for word in the verse
+                       · commentary citations need the commentator's exact words
+                       · "God is telling you…" language is rejected
+                                          │
+                                          ▼
+                     second reader: each claim checked against its evidence
+                       supported · partly supported · unsupported (withheld)
                                           │
                                           ▼
                claims + citations + anchors (status = unverified draft)
@@ -43,51 +54,77 @@ open-licensed data ──► Postgres ──► evidence pack (V: verses, L: lex
       scholarly/historical claims need a checked tier 2–4 source
 ```
 
-Every model call is logged in `ai_runs` with the evidence it saw and what the validator removed.
+Every model call is logged in `ai_runs`: the evidence it saw, the prompt version, and what the validator removed. The `/audit` page shows the review results for every chapter.
+
+**Licensed text never reaches the AI.** NIV, NLT, NASB and NASV are fetched when a reader chooses them, cached for at most a day, never stored in the database, and can't be copied. Selecting them offers only "Ask about verse N", which sends the reference, never the wording.
 
 ## Sources
 
 | Source | Used for | License |
 |---|---|---|
-| World English Bible (eBible.org) | English text, all 66 books | Public domain |
-| Amharic Bible 1962 (Bible Society of Ethiopia / UBS, via eBible.org) | Amharic NT | Non-commercial use with full copyright statement |
-| SBL Greek New Testament | Greek text (words marked SBL in TAGNT) | CC BY 4.0 |
+| World English Bible, BSB, KJV, ASV, YLT (eBible.org) | English texts | Public domain |
+| Amharic Bible 1962 / 1954 E.C. (Bible Society of Ethiopia / UBS, via eBible.org) | Amharic NT | Non-commercial use with the full copyright statement |
+| WordProject copy of the same Amharic Bible | 842 verses missing from the eBible e-text, marked ◦ in the reader | Non-profit use permitted by WordProject |
+| NIV, NLT, NASB 2020 via [API.Bible](https://api.bible) | Licensed English versions | Non-commercial; display only; usage reported (FUMS) |
+| New Amharic Standard Version 2024 (Biblica) via the [YouVersion Platform](https://platform.youversion.com) | Modern Amharic | Non-commercial; display only; no AI use |
+| SBL Greek New Testament | Greek text | CC BY 4.0 |
 | STEP Bible TAGNT, TBESG (Tyndale House, Cambridge) | Greek tagging, glosses, Abbott-Smith lexicon | CC BY 4.0 |
 | OpenBible.info cross-references | Connections | CC BY |
+| Calvin, Henry, Gill, Clarke, JFB (via the Free Use Bible API) | Commentators | Public domain |
+| Tyndale Open Study Notes | Commentators | CC BY-SA 4.0 |
 
-Copyrighted scholarship (BDAG, Louw-Nida, academic commentaries) is never displayed and never cited by the AI. It can be added as a cited-only source once a person has checked each reference.
+Copyrighted scholarship (BDAG, Louw-Nida, modern commentaries) is never displayed and never cited by the AI. Full notices are on `/copyright`; every source with its tier and orientation is on `/sources`.
 
-**Known text issue:** the Amharic e-text merges or omits some verses (e.g. Eph 3:5–7 shows only verse 7). Use "Report a problem in this text" in Read.
+**Verse numbering:** Context follows the WEB's numbering, which places a few verses differently (Rom 16:25–27 → 14:24–26, 3 John 15 → 14, Rev 12:18 → 13:1). Licensed versions are renumbered to match, and the old place says where the verse went.
 
 ## Stack
 
-Next.js 16 (App Router) · PostgreSQL (raw SQL via `postgres`) · Gemini API by default (`gemini-3.8-flash`, JSON-schema output, retries + fallback models; free tier) with Claude as an optional provider (`AI_PROVIDER=claude`) · Tailwind 4 · Vitest.
+Next.js 16 (App Router) · PostgreSQL (raw SQL via `postgres`; Neon in production) · Gemini API (JSON-schema output, retries and fallback models; free tier) · Auth.js (Google sign-in) · Tailwind 4 · Vitest · Vercel.
+
+Chapter pages are served from Next's data cache, so most visits don't touch the database.
 
 ## Run it locally
 
 ```bash
 npm install
-npm run data:fetch      # downloads the open-licensed source files (~100 MB) into data/raw
+npm run data:fetch      # downloads the open-licensed source files into data/raw
 createdb context_dev
 cp .env.example .env.local   # set DATABASE_URL and GEMINI_API_KEY (free at aistudio.google.com)
 npm run db:migrate
-npm run db:import       # ~5 seconds: 31k verses, 137k Greek words, 11k lexicon entries, 114k cross-refs
+npm run db:import       # once, on an empty database: verses, Greek words, lexicon, cross-references
+npm run db:translations # BSB, KJV, ASV, YLT
+npm run data:commentaries && npm run db:commentaries
+npm run data:amharic && npm run db:amharic   # restore the missing Amharic verses
 npm run dev             # http://localhost:3000
 ```
 
-- `npm test` — reference parser + validator tests
-- `npm run study:generate -- "Eph 3" "John 1"` — prepare chapter studies ahead of time
-- `CONTEXT_CURATOR=1` in `.env.local` — shows the **Verify** button (local curation only)
+Optional keys in `.env.local` (see `.env.example`):
+- `API_BIBLE_KEY` for NIV, NLT and NASB.
+- `YVP_APP_KEY` for NASV. This needs Biblica's licence accepted in the YouVersion Platform dashboard.
+- `AUTH_SECRET`, `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` for sign-in.
+
+Without these keys the app still runs, just without those features.
+
+**`npm run db:import` empties the database first.** Never run it on a database that has studies or user notes; use the additive `db:translations`, `db:commentaries` and `db:amharic` instead.
+
+### Useful commands
+
+- `npm test`: reference parser, validator, verse-text parser and diff tests.
+- `npm run study:generate -- "Eph 3" "John 1"`: prepare chapter studies. `-- --all` regenerates every chapter whose prompt version is out of date (resumable).
+- `CONTEXT_CURATOR=1` in `.env.local`: shows the **Verify** button (local curation only; never in production).
+- `bash scripts/sync-neon.sh`: back up production, migrate it, and copy content across while keeping user data.
+- `bash scripts/warm-cache.sh`: pre-load all 260 chapters after a deploy.
 
 ## Project map
 
 ```
 db/migrations/        schema, triggers, constraints (the rules live here)
-scripts/              import (ETL), migrate, generate, smoke test
-lib/bible/            book ids + reference parser
+scripts/              import (ETL), fetchers, migrate, generate, sync, cache warm-up
+lib/bible/            book ids, reference parser, versification, text parsers
 lib/ai/               client, evidence pack, validator, ask / text-or-assumption
-lib/study/generate.ts chapter study: prompt → schema → validate → save
-lib/data/             queries the pages read
-app/                  landing, /study, workspace, /notebook, /sources, /api/*
-components/           workspace shell, steps, claim + "Show me why"
+lib/study/generate.ts chapter study: prompt → schema → validate → review → save
+lib/data/             cached queries the pages read
+lib/licensed.ts       licensed versions (API.Bible, YouVersion), renumbered to Context's verse order
+app/                  landing, /study, workspace, /notebook, /sources, /copyright, /audit, /privacy, /api/*
+components/           workspace shell, steps, claims and "Show me why", version toolbar
 ```
