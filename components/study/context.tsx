@@ -9,6 +9,8 @@ export interface StudyCtx {
   chapter: number;
   study: StudyData;
   curator: boolean;
+  /** The research assistant needs sign-in and this reader isn't signed in. */
+  aiLocked: boolean;
   /** Word trail: highlight every occurrence of this English word in Read. */
   trail: string | null;
   setTrail: (w: string | null) => void;

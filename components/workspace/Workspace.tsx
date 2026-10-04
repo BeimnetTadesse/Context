@@ -51,6 +51,7 @@ export function Workspace({
   guesses,
   notes,
   viewer,
+  aiLocked,
 }: {
   data: ChapterData;
   books: NtBook[];
@@ -62,6 +63,7 @@ export function Workspace({
   guesses: Record<number, Label>;
   notes: SavedNote[];
   viewer: ViewerInfo;
+  aiLocked: boolean;
 }) {
   const [step, setStep] = useState<StepKey>(initialStep);
   const [noteCount, setNoteCount] = useState(initialNoteCount);
@@ -136,8 +138,8 @@ export function Workspace({
     : [];
 
   const ctx = useMemo(
-    () => ({ book: data.book, chapter: data.chapter, study, curator, trail, setTrail, ask: (q: string) => openAsk("ask", q), setNoteCount }),
-    [data.book, data.chapter, study, curator, trail, openAsk],
+    () => ({ book: data.book, chapter: data.chapter, study, curator, aiLocked, trail, setTrail, ask: (q: string) => openAsk("ask", q), setNoteCount }),
+    [data.book, data.chapter, study, curator, aiLocked, trail, openAsk],
   );
 
   const selectVerse = (v: number) => {

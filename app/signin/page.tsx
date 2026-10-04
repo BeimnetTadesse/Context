@@ -21,8 +21,9 @@ export default async function SignIn(props: PageProps<"/signin">) {
         <p className="eyebrow text-accent">Your notebook</p>
         <h1 className="mt-4 font-serif text-4xl">Keep your study with you.</h1>
         <p className="mt-4 leading-relaxed text-ink-2">
-          Reading and studying never need an account. Sign in to keep your notes, reflections and Text-or-Assumption
-          answers safe and available on every device. Anything you’ve already written on this device comes with you.
+          Reading never needs an account. Sign in to use the research assistant (Ask and Text or Assumption?) and to
+          keep your notes, reflections and answers safe on every device. Anything you’ve already written on this device
+          comes with you.
         </p>
         {configured ? (
           <form action={signInWithGoogle} className="mt-10">

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStudy } from "./context";
+import { SignInToUse } from "@/components/study/SignInToUse";
 
 const STAGES = [
   "Gathering the verses and the Greek text…",
@@ -14,7 +15,7 @@ const STAGES = [
 
 /** Shown on steps whose content comes from the chapter study when it hasn't been prepared yet. */
 export function PrepareStudy({ what }: { what: string }) {
-  const { book, chapter, study } = useStudy();
+  const { book, chapter, study, aiLocked } = useStudy();
   const router = useRouter();
   const [state, setState] = useState<"idle" | "working" | "error">(study.status === "pending" ? "working" : "idle");
   const [error, setError] = useState<string | null>(study.status === "failed" ? study.error : null);
@@ -55,7 +56,11 @@ export function PrepareStudy({ what }: { what: string }) {
         verses, the Greek lexicon and the cross-references — every claim labelled and cited, and marked{" "}
         <em>unverified</em> until a person checks it.
       </p>
-      {state === "working" ? (
+      {aiLocked && state !== "working" ? (
+        <div className="mt-5">
+          <SignInToUse what="the research assistant to prepare it" compact />
+        </div>
+      ) : state === "working" ? (
         <div className="mt-5 flex items-center gap-3 text-ink-2" role="status">
           <span className="h-3 w-3 animate-pulse rounded-full bg-accent" />
           {STAGES[stage]} <span className="text-sm text-muted">(usually 1–3 minutes)</span>

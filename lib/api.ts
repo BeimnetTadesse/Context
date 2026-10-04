@@ -1,5 +1,6 @@
 import "server-only";
 import { sql } from "@/lib/db";
+import { authConfigured, currentViewer } from "@/lib/user";
 import { AiBusyError, AiRateLimitError, AiRefusedError, AiUnavailableError } from "@/lib/ai/client";
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status });
@@ -23,7 +24,8 @@ export function aiError(e: unknown) {
  * at most PER_USER calls per visitor and SITE calls in total, per rolling 24 hours.
  */
 const PER_USER = Number(process.env.AI_DAILY_LIMIT_PER_USER ?? 40);
-const SITE = Number(process.env.AI_DAILY_LIMIT_SITE ?? 300);
+export const AI_DAILY_LIMIT_SITE = Number(process.env.AI_DAILY_LIMIT_SITE ?? 300);
+const SITE = AI_DAILY_LIMIT_SITE;
 
 export async function aiBudgetExceeded(userId: number) {
   const [r] = await sql<{ mine: number; all: number }[]>`
@@ -32,6 +34,17 @@ export async function aiBudgetExceeded(userId: number) {
   if (r.mine >= PER_USER) return json({ error: "limit", message: `You've reached today's limit of ${PER_USER} questions. It resets within 24 hours.` }, 429);
   if (r.all >= SITE) return json({ error: "limit", message: "Context has reached today's limit for the research assistant. Please try again tomorrow." }, 429);
   return null;
+}
+
+/**
+ * The research assistant (Ask, Text or Assumption?, preparing a study) needs a free account; reading never does.
+ * It protects the free AI quota and shows how many real people use the assistant. Where sign-in isn't set up
+ * (e.g. a contributor's local copy without Google keys) it stays open.
+ */
+export async function signInRequired() {
+  if (!authConfigured()) return null;
+  if ((await currentViewer()).signedIn) return null;
+  return json({ error: "sign_in", message: "Sign in to use the research assistant. Reading stays open to everyone." }, 401);
 }
 
 export const clean = (s: unknown, max: number) => (typeof s === "string" ? s.trim().slice(0, max) : "");

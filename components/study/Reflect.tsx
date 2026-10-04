@@ -6,6 +6,7 @@ import { LABEL_INFO, LABELS, labelBg, labelColor, type Label } from "@/lib/label
 import { WhyDrawer } from "./Claim";
 import { postJson, useStudy } from "./context";
 import { PrepareStudy } from "./PrepareStudy";
+import { SignInToUse } from "@/components/study/SignInToUse";
 
 export interface SavedNote {
   id: number;
@@ -157,7 +158,7 @@ export function ReflectStep({ guesses, notes }: { guesses: Record<number, Label>
 }
 
 function CheckYourOwn() {
-  const { book, chapter } = useStudy();
+  const { book, chapter, aiLocked } = useStudy();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ label: Label; reasoning: string; textSays: string | null; evidence: EvidenceRef[] } | null>(null);
@@ -177,6 +178,13 @@ function CheckYourOwn() {
       setBusy(false);
     }
   };
+
+  if (aiLocked)
+    return (
+      <div className="mt-8">
+        <SignInToUse what="Text or Assumption? on your own statements" />
+      </div>
+    );
 
   return (
     <form onSubmit={check} className="mt-8 rounded-2xl border border-rule bg-card p-6">
