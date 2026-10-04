@@ -45,11 +45,12 @@ export default function Privacy() {
 
         <H>The research assistant (AI)</H>
         <p className="mt-2">
-          When you use <b className="font-medium text-ink">Ask</b> or <b className="font-medium text-ink">Check a statement</b>, the question you
+          The assistant needs you to be signed in (reading never does). When you use <b className="font-medium text-ink">Ask</b> or{" "}
+          <b className="font-medium text-ink">Check a statement</b>, the question you
           type is sent, together with public-domain Bible text and commentary from Context, to Google’s Gemini API to generate
           the answer. Context uses Gemini’s free tier, under which Google may use submitted content to improve its services — so
           please don’t type anything personal there. A log of each request is kept to audit the assistant’s accuracy. Licensed
-          translations (NIV, NLT, NASB) are never sent to the AI.
+          translations (NIV, NLT, NASB, NASV, AMP, TPT) are never sent to the AI.
         </p>
 
         <H>Licensed Bible translations</H>
@@ -59,6 +60,14 @@ export default function Privacy() {
           by the YouVersion Platform: Context’s server requests the chapter, so YouVersion and the publishers can count which
           chapters are read, but nothing about you is sent with the request. See the{" "}
           <Link href="/copyright" className="text-accent underline underline-offset-4">copyright page</Link>.
+        </p>
+
+        <H>Visitor statistics</H>
+        <p className="mt-2">
+          Context uses Vercel Web Analytics to count visits: which pages are read, roughly where visitors come from, and
+          which device type they use. It sets no cookies and doesn’t record who you are. The site’s owner can also see
+          totals from Context’s own database (how many accounts exist, how many people used the assistant this week), but
+          never what anyone wrote.
         </p>
 
         <H>Where data lives</H>
