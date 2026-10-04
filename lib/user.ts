@@ -44,5 +44,11 @@ export async function ensureUserId(): Promise<number> {
   return u.id;
 }
 
+/** The site owner(s): OWNER_EMAILS is a comma-separated list of Google account emails. Used for /stats. */
+export function isOwner(viewer: Viewer) {
+  const owners = (process.env.OWNER_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return viewer.signedIn && !!viewer.email && owners.includes(viewer.email.toLowerCase());
+}
+
 /** Local curator mode: lets you verify claims. Never on in production unless explicitly set. */
 export const curatorMode = () => process.env.CONTEXT_CURATOR === "1";

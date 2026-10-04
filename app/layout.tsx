@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { EB_Garamond, IBM_Plex_Mono, Instrument_Sans, Noto_Serif_Ethiopic } from "next/font/google";
 import "./globals.css";
 
@@ -29,7 +30,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${garamond.variable} ${instrument.variable} ${plexMono.variable} ${ethiopic.variable}`}
     >
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        {children}
+        {/* Vercel Web Analytics: page views and visitor counts, no cookies, no personal data. */}
+        <Analytics />
+      </body>
     </html>
   );
 }

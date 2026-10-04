@@ -5,6 +5,7 @@ import { LabelPill } from "@/components/ui";
 import type { Label } from "@/lib/labels";
 import { postJson, useStudy } from "@/components/study/context";
 import { EvidenceList, type EvidenceRef } from "@/components/study/Reflect";
+import { SignInToUse } from "@/components/study/SignInToUse";
 
 export type AskRequest = { kind: "ask" | "check"; text: string; nonce: number };
 
@@ -32,7 +33,7 @@ interface CheckResult {
 const SUGGESTIONS = ["Why is this passage here?", "What does the key word in this chapter mean?", "What does the text not say?"];
 
 export function AskPanel({ request }: { request: AskRequest | null }) {
-  const { book, chapter } = useStudy();
+  const { book, chapter, aiLocked } = useStudy();
   const [q, setQ] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
   const handled = useRef<number | null>(null);
@@ -56,11 +57,11 @@ export function AskPanel({ request }: { request: AskRequest | null }) {
   // useEffectEvent: the effect re-runs only for a new request, but always calls the latest run().
   const onRequest = useEffectEvent((r: AskRequest) => void run(r.kind, r.text));
   useEffect(() => {
-    if (request && handled.current !== request.nonce) {
+    if (request && handled.current !== request.nonce && !aiLocked) {
       handled.current = request.nonce;
       onRequest(request);
     }
-  }, [request]);
+  }, [request, aiLocked]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +69,8 @@ export function AskPanel({ request }: { request: AskRequest | null }) {
     void run("ask", q.trim());
     setQ("");
   };
+
+  if (aiLocked) return <SignInToUse />;
 
   return (
     <div>

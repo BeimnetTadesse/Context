@@ -8,7 +8,7 @@ import { sql } from "@/lib/db";
 import type { Label } from "@/lib/labels";
 import { isStepKey } from "@/lib/steps";
 import { parsePrefs } from "@/lib/versions";
-import { curatorMode, currentViewer } from "@/lib/user";
+import { authConfigured, curatorMode, currentViewer } from "@/lib/user";
 
 
 export async function generateMetadata(props: PageProps<"/study/[book]/[chapter]">): Promise<Metadata> {
@@ -52,6 +52,7 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
       guesses={Object.fromEntries(guessRows.map((g) => [g.item_id, g.guess]))}
       notes={noteRows.map((n) => ({ id: n.id, kind: n.kind, itemId: n.item_id, body: n.body }))}
       viewer={{ signedIn: viewer.signedIn, name: viewer.name, image: viewer.image }}
+      aiLocked={authConfigured() && !viewer.signedIn}
     />
   );
 }
