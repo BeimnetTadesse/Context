@@ -174,7 +174,7 @@ export function Margin({
   const { study } = useStudy();
 
   // "Cited in this step": the translation(s) on screen, plus every source behind the claims this step shows.
-  const stepClaims = step === "read" ? letters : study.claims.filter((c) => c.step === step);
+  const stepClaims = step === "read" ? letters : study.claims.filter((c) => c.step === step || (step === "context" && c.step === "book"));
   const cited = new Map<string, Cited>();
   if (step === "read") for (const s of translationSources(prefs)) cited.set(s.key, s);
   for (const c of stepClaims) for (const s of c.citations) if (!cited.has(s.key)) cited.set(s.key, { key: s.key, title: s.title, kind: s.source_type });

@@ -66,6 +66,13 @@ export interface StudyData {
   statements: { id: number; text: string; expected: Label; explanation: string | null; claim: ClaimView | null }[];
   prompts: { id: number; text: string; range: string | null }[];
   ledger: Record<Label, number>;
+  /** The whole book: AI overview claims (labelled, cited, reviewed) and an outline built from the chapter studies. */
+  book: {
+    summary: ClaimView | null;
+    overview: ClaimView[];
+    themes: { title: string; claim: ClaimView }[];
+    outline: { chapter: number; sections: { start: number; end: number; title: string }[] }[];
+  };
   intros: { key: string; title: string; author: string | null; written: string | null; tradition: string | null; license: string; text: string }[];
   withheld: number;
 }
@@ -235,7 +242,23 @@ async function loadStudy(book: Book, chapter: number, verses: VerseRow[]): Promi
     where book_id = ${book.id} and chapter = ${chapter} order by sort, id`;
 
   const ledger = { explicit: 0, inference: 0, historical: 0, scholarly: 0, tradition: 0, personal: 0 } as Record<Label, number>;
-  for (const c of claims) if (c.step !== "reflect") ledger[c.label]++;
+  for (const c of claims) if (c.step !== "reflect" && c.step !== "book") ledger[c.label]++; // book claims aren't this chapter's
+
+  // The whole book: overview claims are already in `claims` (chapter null); themes give some a title, and the
+  // outline is each chapter's sections from its own study.
+  const themeRows = await sql<{ title: string; claim_id: number }[]>`
+    select title, claim_id from book_themes where book_id = ${book.id} order by sort`;
+  const outlineRows = await sql<{ chapter: number; start: number; end: number; title: string }[]>`
+    select s.chapter, sv.verse as start, ev.verse as "end", s.title
+    from sections s join verses sv on sv.ord = s.start_ord join verses ev on ev.ord = s.end_ord
+    where s.book_id = ${book.id} order by s.start_ord`;
+  const outline: StudyData["book"]["outline"] = [];
+  for (const r of outlineRows) {
+    const last = outline[outline.length - 1];
+    if (last?.chapter === r.chapter) last.sections.push({ start: r.start, end: r.end, title: r.title });
+    else outline.push({ chapter: r.chapter, sections: [{ start: r.start, end: r.end, title: r.title }] });
+  }
+  const bookClaims = claims.filter((c) => c.step === "book");
 
   return {
     status: statusRow?.status ?? "none",
@@ -253,6 +276,12 @@ async function loadStudy(book: Book, chapter: number, verses: VerseRow[]): Promi
     prompts: items.filter((i) => i.kind === "prompt").map((i) => ({ id: i.id, text: i.text, range: i.anchor_start ? range(i.anchor_start, i.anchor_end ?? i.anchor_start) : null })),
     ledger,
     intros: [...(await getBookIntros(book.id))],
+    book: {
+      summary: bookClaims.find((c) => c.topic === "summary") ?? null,
+      overview: ["author", "audience", "purpose", "structure"].flatMap((t) => bookClaims.filter((c) => c.topic === t)),
+      themes: themeRows.flatMap((t) => (claimById.has(t.claim_id) ? [{ title: t.title, claim: claimById.get(t.claim_id)! }] : [])),
+      outline,
+    },
     withheld,
   };
 }

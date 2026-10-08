@@ -15,6 +15,7 @@
     "data:fetch": "bash scripts/fetch-data.sh",
     "study:generate": "tsx --conditions=react-server scripts/generate.ts",
     "study:smoke": "tsx --conditions=react-server scripts/smoke-study.ts",
+    "study:books": "tsx --conditions=react-server scripts/generate-books.ts",
     "data:commentaries": "tsx scripts/fetch-commentaries.ts",
     "data:amharic": "tsx scripts/fetch-wordproject-amh.ts",
     "db:commentaries": "tsx scripts/import-commentaries.ts",

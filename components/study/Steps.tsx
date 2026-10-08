@@ -110,6 +110,7 @@ export function ContextStep({ chapterCount }: { chapterCount: number }) {
   const claims = byStep(study.claims, "context");
   return (
     <>
+      <BookOverview />
       <Eyebrow>Where this sits in {book.name}</Eyebrow>
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         {Array.from({ length: chapterCount }, (_, i) => (
@@ -146,6 +147,70 @@ export function ContextStep({ chapterCount }: { chapterCount: number }) {
         Where the assistant mentions them, they are labelled as views and stay unverified until a scholarly source is attached.
       </p>
     </>
+  );
+}
+
+const BOOK_TOPICS: Record<string, string> = { author: "Who wrote it", audience: "To whom", purpose: "Why it was written", structure: "How it’s built" };
+
+/** About the whole book: the overview claims, its themes, and a chapter-by-chapter outline. */
+function BookOverview() {
+  const { book, chapter, study } = useStudy();
+  const { summary, overview, themes, outline } = study.book;
+  if (!summary && overview.length === 0 && themes.length === 0) return null;
+  return (
+    <section className="mt-10 rounded-3xl border border-rule bg-card px-5 py-7 sm:px-8">
+      <p className="eyebrow text-accent">The whole book</p>
+      <h2 className="mt-2 font-serif text-[clamp(2rem,4vw,2.6rem)] leading-tight">About {book.name}</h2>
+      {summary && <ClaimCard claim={summary} />}
+
+      {overview.length > 0 && (
+        <div className="mt-8">
+          <p className="eyebrow text-muted">At a glance</p>
+          {overview.map((c) => (
+            <div key={c.id} className="mt-3 border-b border-rule last:border-b-0">
+              <p className="pt-3 font-mono text-[0.65rem] uppercase tracking-widest text-accent">{BOOK_TOPICS[c.topic ?? ""] ?? c.topic}</p>
+              <ClaimCard claim={c} compact />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {themes.length > 0 && (
+        <div className="mt-8">
+          <p className="eyebrow text-muted">Themes that run through it</p>
+          {themes.map((t, i) => (
+            <div key={t.claim.id} className="mt-4 border-b border-rule last:border-b-0">
+              <p className="flex items-baseline gap-3 pt-3 font-serif text-2xl">
+                <span className="font-mono text-xs text-accent">{String(i + 1).padStart(2, "0")}</span>
+                {t.title}
+              </p>
+              <ClaimCard claim={t.claim} compact />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {outline.length > 0 && (
+        <details className="group mt-8 rounded-2xl border border-rule bg-paper/60 px-4 py-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between font-serif text-xl">
+            Chapter by chapter
+            <span className="font-mono text-xs text-muted group-open:hidden">Show ▾</span>
+            <span className="hidden font-mono text-xs text-muted group-open:inline">Hide ▴</span>
+          </summary>
+          <ol className="mt-3 divide-y divide-rule">
+            {outline.map((o) => (
+              <li key={o.chapter} className={`grid grid-cols-[3rem_1fr] gap-3 py-2.5 ${o.chapter === chapter ? "rounded-lg bg-[var(--l-scholarly-bg)] px-2" : ""}`}>
+                <Link href={`/study/${book.slug}/${o.chapter}?step=context`} className="font-mono text-sm text-accent hover:underline">
+                  {o.chapter}
+                </Link>
+                <span className="text-ink-2">{o.sections.map((x) => x.title).join(" · ")}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-2 text-xs text-muted">Section titles from each chapter’s study (AI draft, unverified).</p>
+        </details>
+      )}
+    </section>
   );
 }
 
