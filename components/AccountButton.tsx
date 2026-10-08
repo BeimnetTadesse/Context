@@ -36,6 +36,7 @@ export function AccountButton({ viewer }: { viewer: ViewerInfo }) {
       {open && (
         <div className="absolute right-0 top-11 z-50 w-56 rounded-xl border border-rule bg-card p-2 shadow-lg">
           <p className="px-3 py-2 text-sm text-muted">{viewer.name}</p>
+          <Link href="/account" className="block rounded-lg px-3 py-2 text-sm hover:bg-paper-2">Profile</Link>
           <Link href="/notebook" className="block rounded-lg px-3 py-2 text-sm hover:bg-paper-2">Notebook</Link>
           <form action={signOutAction}>
             <input type="hidden" name="next" value={path} />
