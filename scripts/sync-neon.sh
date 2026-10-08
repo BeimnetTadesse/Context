@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publish local content (studies, commentaries, versions) to the live Neon database
-# WITHOUT losing live user data (accounts, notes, highlights, quiz answers, their AI logs).
+# WITHOUT losing live user data (accounts, notes, highlights, quiz answers, text reports, their AI logs).
 # Every user table must appear in steps 1, 2 and 4 below.
 # Usage: bash scripts/sync-neon.sh        (reads NEON_DATABASE_URL_DIRECT from .env.local)
 set -euo pipefail
@@ -22,7 +22,7 @@ mkdir -p backups
 DATABASE_URL="$NEON" npx tsx scripts/migrate.ts
 
 echo "1/5 saving live user data from Neon…"
-for t in users notes highlights assumption_guesses; do
+for t in users notes highlights assumption_guesses text_reports; do
   "$PSQL" "$NEON" -q -c "\\copy (select * from $t) to '$TMP/$t.csv' csv header"
 done
 "$PSQL" "$NEON" -q -c "\\copy (select user_id, kind, book_id, chapter, input, retrieved, output, validation, model, prompt_version, created_at from ai_runs where user_id is not null) to '$TMP/ai_user.csv' csv header"
@@ -31,7 +31,7 @@ wc -l "$TMP"/*.csv | tail -n +1
 echo "2/5 dumping local content (no local users/notes/logs)…"
 pg_dump --no-owner --no-privileges -d context_dev \
   --exclude-table-data=users --exclude-table-data=notes --exclude-table-data=highlights \
-  --exclude-table-data=assumption_guesses --exclude-table-data=ai_runs \
+  --exclude-table-data=assumption_guesses --exclude-table-data=ai_runs --exclude-table-data=text_reports \
   -f "$TMP/content.sql"
 psql -d context_dev -q -c "\\copy (select null::int as user_id, kind, book_id, chapter, input, retrieved, output, validation, model, prompt_version, created_at from ai_runs where kind in ('chapter_study','book_overview','review')) to '$TMP/ai_local.csv' csv header"
 
@@ -50,6 +50,7 @@ insert into notes select id, user_id, book_id, chapter, start_ord, end_ord, kind
 create temp table g (like assumption_guesses);
 \\copy g from '$TMP/assumption_guesses.csv' csv header
 insert into assumption_guesses select * from g where item_id in (select id from reflection_items);
+\\copy text_reports from '$TMP/text_reports.csv' csv header
 create temp table a (user_id int, kind text, book_id smallint, chapter smallint, input text, retrieved jsonb, output jsonb, validation jsonb, model text, prompt_version text, created_at timestamptz);
 \\copy a from '$TMP/ai_local.csv' csv header
 \\copy a from '$TMP/ai_user.csv' csv header
@@ -57,8 +58,9 @@ insert into ai_runs (user_id, kind, book_id, chapter, input, retrieved, output, 
   select * from a order by created_at;
 select setval('users_id_seq', greatest((select max(id) from users), 1));
 select setval('notes_id_seq', greatest((select max(id) from notes), 1));
+select setval('text_reports_id_seq', greatest((select max(id) from text_reports), 1));
 SQL
 
 echo "5/5 verifying…"
-Q="select 'studies',count(*) from chapter_studies where status='ready' union all select 'claims',count(*) from claims union all select 'commentary_notes',count(*) from commentary_notes union all select 'verse_texts',count(*) from verse_texts union all select 'book_overviews',count(*) from book_overviews union all select 'book_intros',count(*) from book_intros union all select 'users',count(*) from users union all select 'notes',count(*) from notes union all select 'highlights',count(*) from highlights"
+Q="select 'studies',count(*) from chapter_studies where status='ready' union all select 'claims',count(*) from claims union all select 'commentary_notes',count(*) from commentary_notes union all select 'verse_texts',count(*) from verse_texts union all select 'book_overviews',count(*) from book_overviews union all select 'book_intros',count(*) from book_intros union all select 'users',count(*) from users union all select 'notes',count(*) from notes union all select 'highlights',count(*) from highlights union all select 'text_reports',count(*) from text_reports"
 "$PSQL" "$NEON" -At -F ' ' -c "$Q"

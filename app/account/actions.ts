@@ -22,7 +22,7 @@ function refresh() {
 
 export async function deleteNotesAction() {
   const { id } = await readerId();
-  await sql`delete from notes where user_id = ${id} and kind <> 'text_issue'`;
+  await sql`delete from notes where user_id = ${id}`;
   refresh();
 }
 

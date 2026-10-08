@@ -2,7 +2,7 @@ import { clean, json, ntChapter } from "@/lib/api";
 import { sql } from "@/lib/db";
 import { ensureUserId } from "@/lib/user";
 
-const KINDS = ["note", "reflection", "text_says", "i_bring", "text_issue"];
+const KINDS = ["note", "reflection", "text_says", "i_bring"];
 
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const [row] = await sql<{ id: number }[]>`
     insert into notes (user_id, book_id, chapter, start_ord, end_ord, kind, item_id, body)
     values (${userId}, ${target.book.id}, ${target.chapter}, ${start}, ${start}, ${b.kind}, ${itemId}, ${body}) returning id`;
-  const [{ count }] = await sql<{ count: number }[]>`select count(*)::int as count from notes where user_id = ${userId} and kind <> 'text_issue'`;
+  const [{ count }] = await sql<{ count: number }[]>`select count(*)::int as count from notes where user_id = ${userId}`;
   return json({ id: row.id, count });
 }
 

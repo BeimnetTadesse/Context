@@ -132,7 +132,7 @@ function ReportProblem({ prefs }: { prefs: ReadPrefs }) {
       onSubmit={async (e) => {
         e.preventDefault();
         if (!text.trim()) return;
-        await postJson("/api/notes", { book: book.slug, chapter, kind: "text_issue", body: `[${translation}] ${text.trim()}` });
+        await postJson("/api/reports", { book: book.slug, chapter, translation, body: text.trim() });
         setDone(true);
       }}
     >

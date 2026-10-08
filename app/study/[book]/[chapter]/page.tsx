@@ -37,7 +37,7 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
         sql<{ id: number; kind: string; item_id: number | null; body: string }[]>`
           select id, kind, item_id, body from notes
           where user_id = ${userId} and book_id = ${data.book.id} and chapter = ${data.chapter} order by created_at desc`,
-        sql<{ n: number }[]>`select count(*)::int as n from notes where user_id = ${userId} and kind <> 'text_issue'`,
+        sql<{ n: number }[]>`select count(*)::int as n from notes where user_id = ${userId}`,
         chapterHighlights(userId, data.book.id, data.chapter),
       ])
     : [[], [], [{ n: 0 }], {}];

@@ -37,6 +37,7 @@ async function adoptDeviceNotes(accountId: number) {
   if (!device || device.id === accountId) return;
   await sql.begin(async (tx) => {
     await tx`update notes set user_id = ${accountId} where user_id = ${device.id}`;
+    await tx`update text_reports set user_id = ${accountId} where user_id = ${device.id}`;
     await tx`insert into assumption_guesses (user_id, item_id, guess, correct, created_at)
              select ${accountId}, item_id, guess, correct, created_at from assumption_guesses where user_id = ${device.id}
              on conflict (user_id, item_id) do nothing`;

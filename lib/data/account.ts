@@ -36,7 +36,7 @@ export async function getNotebook(userId: number) {
       select n.id, n.kind, n.body, n.created_at, b.name as book, b.slug, n.chapter, v.verse, r.text as prompt
       from notes n join books b on b.id = n.book_id
       left join verses v on v.ord = n.start_ord left join reflection_items r on r.id = n.item_id
-      where n.user_id = ${userId} and n.kind <> 'text_issue'
+      where n.user_id = ${userId}
       order by b.id, n.chapter, v.verse nulls first, n.created_at`,
     sql<HighlightItem[]>`
       select h.ord, h.color, h.created_at, b.name as book, b.slug, v.chapter, v.verse, t.text

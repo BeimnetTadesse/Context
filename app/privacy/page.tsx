@@ -42,6 +42,10 @@ export default function Privacy() {
           Notes, reflections, highlights and Text-or-Assumption answers are stored in Context’s database so you can see them again. They
           are private to you and are not published or shared.
         </p>
+        <p className="mt-2">
+          If you use <b className="font-medium text-ink">Report a problem in this text</b>, your report is read by Context’s
+          maintainer so the text can be fixed. It is kept, without your name, even if you later delete your account.
+        </p>
 
         <H>The research assistant (AI)</H>
         <p className="mt-2">

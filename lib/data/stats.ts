@@ -37,7 +37,7 @@ export async function getStats() {
     select (select count(*)::int from ai_runs where kind in ('ask', 'assumption')) as questions,
            (select count(*)::int from ai_runs where kind in ('ask', 'assumption') and created_at > now() - interval '24 hours') as questions_24h,
            (select count(*)::int from ai_runs where created_at > now() - interval '24 hours') as ai_24h,
-           (select count(*)::int from notes where kind <> 'text_issue') as notes,
+           (select count(*)::int from notes) as notes,
            (select count(*)::int from assumption_guesses) as guesses`;
 
   const chapters = await sql<{ name: string; chapter: number; slug: string; questions: number }[]>`

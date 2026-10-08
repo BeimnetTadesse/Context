@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { Wordmark } from "@/components/ui";
 import { AI_DAILY_LIMIT_SITE } from "@/lib/api";
 import { studyPath } from "@/lib/bible/refs";
+import { getTextReports, type TextReport } from "@/lib/data/reports";
 import { getStats } from "@/lib/data/stats";
+import { setReportFixed } from "./actions";
 import { currentViewer, isOwner } from "@/lib/user";
 
 export const metadata: Metadata = { title: "Stats · Context", robots: { index: false, follow: false } };
@@ -12,7 +14,7 @@ export const metadata: Metadata = { title: "Stats · Context", robots: { index: 
 // Owner only (OWNER_EMAILS). Anyone else gets a plain 404, so the page doesn't reveal that it exists.
 export default async function Stats() {
   if (!isOwner(await currentViewer())) notFound();
-  const { people, active, daily, totals, chapters } = await getStats();
+  const [{ people, active, daily, totals, chapters }, reports] = await Promise.all([getStats(), getTextReports()]);
   const maxDay = Math.max(1, ...daily.map((d) => Math.max(d.people, d.questions)));
   const inPeriod = (days: number) => active.find((a) => a.days === days) ?? { accounts: 0, devices: 0 };
 
@@ -28,7 +30,7 @@ export default async function Stats() {
         <p className="eyebrow text-accent">Stats</p>
         <h1 className="mt-3 font-serif text-4xl">Who’s using Context</h1>
         <p className="mt-3 max-w-2xl text-ink-2">
-          From Context’s own database: counts only, never what anyone wrote. <b className="font-medium text-ink">Active</b> means
+          From Context’s own database: counts only, never what anyone wrote (except text-problem reports, which are written for you). <b className="font-medium text-ink">Active</b> means
           asked, saved a note or answered a quiz. People who only read appear in{" "}
           <a href="https://vercel.com/dashboard" target="_blank" rel="noreferrer" className="text-accent underline underline-offset-4">Vercel Analytics</a>{" "}
           (your project → Analytics).
@@ -38,6 +40,31 @@ export default async function Stats() {
           <Card label="Accounts" value={people.accounts} note={`+${people.accounts_7d} this week`} />
           <Card label="Anonymous devices" value={people.devices} note="did something without signing in" />
           <Card label="Questions to the assistant" value={totals.questions} note={`${totals.ai_24h} of ${AI_DAILY_LIMIT_SITE} AI calls used in the last 24h`} />
+        </section>
+
+        <section id="reports" className="mt-12">
+          <h2 className="font-serif text-2xl">
+            Text problems{" "}
+            <span className={`ml-1 rounded-full px-2.5 py-0.5 align-middle font-mono text-sm ${reports.open.length ? "bg-accent text-paper" : "bg-paper-2 text-muted"}`}>
+              {reports.open.length} open
+            </span>
+          </h2>
+          <p className="mt-1 text-sm text-muted">From “Report a problem in this text” in the Read step. Who sent them isn’t shown.</p>
+          {reports.open.length ? (
+            <ul className="mt-4 divide-y divide-rule border-y border-rule">
+              {reports.open.map((r) => <ReportRow key={r.id} r={r} />)}
+            </ul>
+          ) : (
+            <p className="mt-4 rounded-xl border border-dashed border-rule px-5 py-4 text-ink-2">Nothing to check. New reports appear here.</p>
+          )}
+          {reports.fixed.length > 0 && (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm text-muted hover:text-ink">Recently fixed ({reports.fixed.length})</summary>
+              <ul className="mt-2 divide-y divide-rule border-y border-rule opacity-70">
+                {reports.fixed.map((r) => <ReportRow key={r.id} r={r} />)}
+              </ul>
+            </details>
+          )}
         </section>
 
         <h2 className="mt-12 font-serif text-2xl">Active people</h2>
@@ -104,6 +131,31 @@ export default async function Stats() {
         </div>
       </main>
     </div>
+  );
+}
+
+const when = (d: Date) => d.toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
+
+function ReportRow({ r }: { r: TextReport }) {
+  return (
+    <li className="flex flex-wrap items-start gap-x-5 gap-y-2 py-4">
+      <div className="min-w-0 flex-1">
+        <p className="flex flex-wrap items-baseline gap-x-3 font-mono text-xs text-muted">
+          <Link href={studyPath(r, r.chapter)} className="text-sm text-accent hover:underline">{r.book} {r.chapter}</Link>
+          <span className="rounded bg-paper-2 px-1.5 py-0.5 text-ink-2">{r.translation}</span>
+          <span>{when(r.created_at)}</span>
+          {r.resolved_at && <span>· fixed {when(r.resolved_at)}</span>}
+        </p>
+        <p className="mt-1.5 whitespace-pre-wrap text-ink">{r.body}</p>
+      </div>
+      <form action={setReportFixed}>
+        <input type="hidden" name="id" value={r.id} />
+        <input type="hidden" name="fixed" value={r.resolved_at ? "0" : "1"} />
+        <button className="rounded-lg border border-rule bg-card px-3 py-1.5 text-sm text-ink-2 hover:border-ink hover:text-ink">
+          {r.resolved_at ? "Reopen" : "Mark fixed"}
+        </button>
+      </form>
+    </li>
   );
 }
 
