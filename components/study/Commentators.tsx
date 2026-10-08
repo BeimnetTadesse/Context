@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Commentator, CommentaryNote } from "@/lib/data/commentary";
+import { VerseFathers } from "./ChurchFathers";
 import { useStudy } from "./context";
 
 /** Turn the references we resolved inside a note into links (NT) or labelled spans (OT). */
@@ -96,32 +97,47 @@ export function useCommentary(from: number | null, to: number | null) {
   return data?.key === key ? data.commentators : null;
 }
 
-/** Margin panel: what every commentator says about one verse. */
+/** Margin panel: what the commentators, or the Church Fathers, say about one verse. */
 export function VerseCommentary({ verse, onClose }: { verse: number; onClose: () => void }) {
   const { chapter } = useStudy();
+  const [voices, setVoices] = useState<"commentators" | "fathers">("commentators");
   const commentators = useCommentary(verse, verse);
   return (
     <div>
       <div className="mb-4 flex items-start justify-between border-b border-rule pb-3">
         <div>
-          <p className="eyebrow text-accent">Commentators</p>
+          <p className="eyebrow text-accent">{voices === "fathers" ? "Church Fathers" : "Commentators"}</p>
           <p className="mt-1 font-serif text-2xl">on {chapter}:{verse}</p>
         </div>
         <button onClick={onClose} className="text-sm text-muted hover:text-ink" aria-label="Close commentary">✕</button>
       </div>
-      <p className="mb-4 text-sm leading-relaxed text-muted">
-        Oldest first. These are named interpreters from particular traditions — read them as voices, not verdicts.
-      </p>
-      {commentators === null ? (
-        <p className="text-sm text-muted">Opening the commentaries…</p>
-      ) : commentators.length === 0 ? (
-        <p className="text-sm text-muted">No commentary notes on this verse.</p>
+      <div className="mb-4 flex gap-1 rounded-full bg-paper-2 p-1" role="tablist" aria-label="Whose reading">
+        {(["commentators", "fathers"] as const).map((t) => (
+          <button key={t} role="tab" aria-selected={voices === t} onClick={() => setVoices(t)}
+            className={`flex-1 rounded-full px-3 py-1 text-sm ${voices === t ? "bg-card shadow-sm" : "text-muted hover:text-ink"}`}>
+            {t === "fathers" ? "Church Fathers" : "Commentators"}
+          </button>
+        ))}
+      </div>
+      {voices === "fathers" ? (
+        <VerseFathers verse={verse} />
       ) : (
-        <div className="space-y-4">
-          {commentators.map((c) => (
-            <CommentatorCard key={c.key} c={c} limit={500} />
-          ))}
-        </div>
+        <>
+          <p className="mb-4 text-sm leading-relaxed text-muted">
+            Oldest first. These are named interpreters from particular traditions — read them as voices, not verdicts.
+          </p>
+          {commentators === null ? (
+            <p className="text-sm text-muted">Opening the commentaries…</p>
+          ) : commentators.length === 0 ? (
+            <p className="text-sm text-muted">No commentary notes on this verse.</p>
+          ) : (
+            <div className="space-y-4">
+              {commentators.map((c) => (
+                <CommentatorCard key={c.key} c={c} limit={500} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

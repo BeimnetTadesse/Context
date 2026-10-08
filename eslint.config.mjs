@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Downloaded source data (not ours, not committed).
+    "data/raw/**",
   ]),
 ]);
 

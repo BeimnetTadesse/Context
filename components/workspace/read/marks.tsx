@@ -65,7 +65,7 @@ export function Vn({ n, end, onVerse, active }: { n: number; end?: number | null
       <button
         type="button"
         onClick={() => onVerse(n)}
-        title={`Commentators on verse ${n}`}
+        title={`Commentators and Church Fathers on verse ${n}`}
         className={`rounded px-0.5 transition hover:bg-[var(--l-scholarly-bg)] hover:text-ink ${active ? "bg-[var(--l-scholarly-bg)] text-ink" : ""}`}
       >
         {label}
