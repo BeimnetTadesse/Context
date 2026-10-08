@@ -77,8 +77,8 @@ async function loadCommentary(bookId: number, chapter: number, from: number, to:
 }
 
 export async function getBookIntros(bookId: number) {
-  return sql<{ key: string; title: string; author: string | null; written: string | null; tradition: string | null; license: string; text: string }[]>`
-    select s.key, s.title, s.author, s.written, s.tradition, s.license, i.text
+  return sql<{ key: string; title: string; author: string | null; written: string | null; tradition: string | null; license: string; text: string; url: string | null }[]>`
+    select s.key, s.title, s.author, s.written, s.tradition, s.license, i.text, i.url
     from book_intros i join sources s on s.id = i.source_id
     where i.book_id = ${bookId} order by s.written desc`;
 }

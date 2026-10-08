@@ -105,7 +105,7 @@ export default async function Copyright() {
           SBL Greek New Testament (CC BY 4.0) · Greek tagging and Abbott-Smith lexicon from STEP Bible, Tyndale House,
           Cambridge (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY) · Tyndale Open Study Notes ©
           Tyndale House Publishers (CC BY-SA 4.0) · Commentaries of Calvin, Henry, Gill, Clarke and Jamieson-Fausset-Brown
-          (public domain), via the Free Use Bible API. Details in the <Link href="/sources" className="text-accent underline underline-offset-4">source library</Link>.
+          (public domain), via the Free Use Bible API · The International Standard Bible Encyclopedia (1915) and Easton’s Bible Dictionary (1897), public domain, for book introductions and overviews. Details in the <Link href="/sources" className="text-accent underline underline-offset-4">source library</Link>.
         </p>
 
         <h2 className="mt-12 font-serif text-2xl">Usage reporting</h2>

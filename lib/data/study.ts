@@ -73,7 +73,7 @@ export interface StudyData {
     themes: { title: string; claim: ClaimView }[];
     outline: { chapter: number; sections: { start: number; end: number; title: string }[] }[];
   };
-  intros: { key: string; title: string; author: string | null; written: string | null; tradition: string | null; license: string; text: string }[];
+  intros: { key: string; title: string; author: string | null; written: string | null; tradition: string | null; license: string; text: string; url: string | null }[];
   withheld: number;
 }
 

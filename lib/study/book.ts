@@ -10,7 +10,7 @@ import { reviewChapter } from "./generate";
 
 // Book overview: what a whole book is about, drafted from the book's own verses and the commentators'
 // introductions, under the same rules as chapter studies (cited, checked word for word, labelled, reviewed).
-export const BOOK_PROMPT_VERSION = "2026-10-08.1";
+export const BOOK_PROMPT_VERSION = "2026-10-08.2"; // .2: adds ISBE (1915) and Easton (1897)
 
 const Claim = z.object({
   label: z.enum(LABELS),
@@ -27,12 +27,15 @@ type BookStudy = z.infer<typeof BookSchema>;
 
 const SYSTEM = `You are the research assistant inside Context, a Bible study workspace. You write the overview of one New Testament book: what it is about as a whole. You are not a pastor, theologian, or authority.
 
-You will receive an evidence pack: every verse of the book (V: ids) and the book introductions of six named commentators (K: ids): John Calvin (Reformed, 16th c.), Matthew Henry (devotional, 18th c.), John Gill (Particular Baptist, 18th c.), Adam Clarke (Methodist/Arminian, 19th c.), Jamieson-Fausset-Brown (Scottish evangelical, 1871) and the Tyndale Open Study Notes (modern evangelical). Every statement must cite ids from the pack and nothing else.
+You will receive an evidence pack: every verse of the book (V: ids), and introductions to the book (K: ids) from:
+- two reference works: the International Standard Bible Encyclopedia (ISBE, 1915, a multi-author scholarly encyclopedia; its excerpts carry their section heading) and Easton's Bible Dictionary (1897, a short popular dictionary);
+- six commentators: John Calvin (Reformed, 16th c.), Matthew Henry (devotional, 18th c.), John Gill (Particular Baptist, 18th c.), Adam Clarke (Methodist/Arminian, 19th c.), Jamieson-Fausset-Brown (Scottish evangelical, 1871) and the Tyndale Open Study Notes (modern evangelical).
+Every statement must cite ids from the pack and nothing else.
 
-Label every claim with exactly one of: explicit (the book itself says it; cite the verse), inference (follows closely from the text), historical (from an academic commentator's introduction; cite the K: id with its exact words), scholarly (a view others dispute; phrase it as a view and name who holds it), tradition (a belief handed down in church tradition), personal (never use here).
+Label every claim with exactly one of: explicit (the book itself says it; cite the verse), inference (follows closely from the text), historical (background from ISBE or an academic commentator; cite the K: id with its exact words), scholarly (a view others dispute; phrase it as a view and name who holds it, e.g. "ISBE argues…", "Easton holds…"), tradition (a belief handed down in church tradition), personal (never use here).
 
 Rules:
-- Prefer what the book says about itself: who writes, to whom, why (cite those verses). Authorship, date and setting beyond the text are debated: label them scholarly or historical, attribute them to the commentator, and keep them modest. These are all Protestant voices; do not present them as "the Christian view".
+- Prefer what the book says about itself: who writes, to whom, why (cite those verses). Authorship, date and setting beyond the text are debated: label them scholarly or historical, attribute them to the source, and keep them modest. ISBE is the most thorough source on authorship, date and setting; where sources disagree, say so. These are all Protestant voices from 1540–2022; do not present them as "the Christian view".
 - When you cite a K: id, copy the commentator's exact words (5–30 words) into "excerpt", or the citation is removed.
 - summary: 2–3 plain sentences a newcomer understands. Cite the verses that show it.
 - overview: 3–5 claims, at most one per topic (author, audience, purpose, structure).
@@ -53,15 +56,28 @@ async function bookEvidence(book: Book): Promise<EvidencePack> {
     from book_intros i join sources s on s.id = i.source_id where i.book_id = ${book.id} order by s.written`;
   const commentaryText = new Map<string, string>();
   const academic = new Set<string>();
+  // Space per source, so no single voice dominates: ISBE's long scholarly articles get the most.
+  const BUDGET: Record<string, number> = { ISBE: 9000, Easton: 3000 };
   for (const intro of intros) {
-    // Up to ~5,000 characters per commentator, so no single voice dominates.
+    const budget = BUDGET[intro.key] ?? 5000;
+    // Paragraphs with the section heading they sit under (short lines are headings, e.g. "II. Place and Date").
+    let heading = "";
+    const paras: { heading: string; text: string }[] = [];
+    for (const raw of intro.text.split(/\n\s*\n/)) {
+      const p = raw.replace(/\s+/g, " ").trim();
+      if (p.length <= 80 && !/[.?!”"]$/.test(p.replace(/[:.]$/, "")) && p.length > 1) heading = p.replace(/[:.]$/, "");
+      if (p.length > 60) paras.push({ heading, text: p });
+    }
+    // Long articles: take paragraphs evenly from start to end, so date, purpose and teaching are all represented.
+    const total = paras.reduce((n, p) => n + Math.min(p.text.length, 900), 0);
+    const step = Math.max(1, Math.ceil(total / budget));
     let used = 0;
-    const paras = intro.text.split(/\n\s*\n/).map((p) => p.replace(/\s+/g, " ").trim()).filter((p) => p.length > 60);
-    for (const [i, p] of paras.entries()) {
-      if (used > 5000) break;
+    for (let i = 0; i < paras.length && used < budget; i += step) {
+      const p = paras[i].text;
       const text = p.length > 900 ? p.slice(0, 900).replace(/\s+\S*$/, "") + "…" : p;
       const id = `K:intro.${intro.source_id}.${i}`;
-      items.push({ id, kind: "commentary", text: `${intro.author} (${intro.written}, ${intro.tradition}), introduction to ${book.name}: ${text}`, meta: { key: intro.key } });
+      const where = paras[i].heading && intro.key === "ISBE" ? ` (section “${paras[i].heading}”)` : "";
+      items.push({ id, kind: "commentary", text: `${intro.author} (${intro.written}, ${intro.tradition}), introduction to ${book.name}${where}: ${text}`, meta: { key: intro.key } });
       commentaryText.set(id, text);
       if (intro.tier >= 2 && intro.tier <= 4) academic.add(id);
       used += text.length;
