@@ -110,6 +110,7 @@ export function ContextStep({ chapterCount }: { chapterCount: number }) {
   const claims = byStep(study.claims, "context");
   return (
     <>
+      <BookOverview />
       <Eyebrow>Where this sits in {book.name}</Eyebrow>
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         {Array.from({ length: chapterCount }, (_, i) => (
@@ -149,6 +150,70 @@ export function ContextStep({ chapterCount }: { chapterCount: number }) {
   );
 }
 
+const BOOK_TOPICS: Record<string, string> = { author: "Who wrote it", audience: "To whom", purpose: "Why it was written", structure: "How it’s built" };
+
+/** About the whole book: the overview claims, its themes, and a chapter-by-chapter outline. */
+function BookOverview() {
+  const { book, chapter, study } = useStudy();
+  const { summary, overview, themes, outline } = study.book;
+  if (!summary && overview.length === 0 && themes.length === 0) return null;
+  return (
+    <section className="mt-10 rounded-3xl border border-rule bg-card px-5 py-7 sm:px-8">
+      <p className="eyebrow text-accent">The whole book</p>
+      <h2 className="mt-2 font-serif text-[clamp(2rem,4vw,2.6rem)] leading-tight">About {book.name}</h2>
+      {summary && <ClaimCard claim={summary} />}
+
+      {overview.length > 0 && (
+        <div className="mt-8">
+          <p className="eyebrow text-muted">At a glance</p>
+          {overview.map((c) => (
+            <div key={c.id} className="mt-3 border-b border-rule last:border-b-0">
+              <p className="pt-3 font-mono text-[0.65rem] uppercase tracking-widest text-accent">{BOOK_TOPICS[c.topic ?? ""] ?? c.topic}</p>
+              <ClaimCard claim={c} compact />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {themes.length > 0 && (
+        <div className="mt-8">
+          <p className="eyebrow text-muted">Themes that run through it</p>
+          {themes.map((t, i) => (
+            <div key={t.claim.id} className="mt-4 border-b border-rule last:border-b-0">
+              <p className="flex items-baseline gap-3 pt-3 font-serif text-2xl">
+                <span className="font-mono text-xs text-accent">{String(i + 1).padStart(2, "0")}</span>
+                {t.title}
+              </p>
+              <ClaimCard claim={t.claim} compact />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {outline.length > 0 && (
+        <details className="group mt-8 rounded-2xl border border-rule bg-paper/60 px-4 py-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between font-serif text-xl">
+            Chapter by chapter
+            <span className="font-mono text-xs text-muted group-open:hidden">Show ▾</span>
+            <span className="hidden font-mono text-xs text-muted group-open:inline">Hide ▴</span>
+          </summary>
+          <ol className="mt-3 divide-y divide-rule">
+            {outline.map((o) => (
+              <li key={o.chapter} className={`grid grid-cols-[3rem_1fr] gap-3 py-2.5 ${o.chapter === chapter ? "rounded-lg bg-[var(--l-scholarly-bg)] px-2" : ""}`}>
+                <Link href={`/study/${book.slug}/${o.chapter}?step=context`} className="font-mono text-sm text-accent hover:underline">
+                  {o.chapter}
+                </Link>
+                <span className="text-ink-2">{o.sections.map((x) => x.title).join(" · ")}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-2 text-xs text-muted">Section titles from each chapter’s study (AI draft, unverified).</p>
+        </details>
+      )}
+    </section>
+  );
+}
+
 function BookIntros() {
   const { book, study } = useStudy();
   const [open, setOpen] = useState<string | null>(null);
@@ -157,11 +222,16 @@ function BookIntros() {
       <h2 className="flex items-baseline gap-3 border-b border-rule pb-3 font-serif text-3xl">
         <span className="font-mono text-xs text-accent">∗</span>Introducing {book.name}
       </h2>
-      <p className="mt-3 text-sm text-muted">What named commentators say about the book as a whole. Their views, labelled with their tradition.</p>
+      <p className="mt-3 text-sm text-muted">
+        What named commentators and reference works say about the book as a whole. Their views, labelled with their tradition.
+      </p>
       <div className="mt-4 space-y-3">
         {study.intros.map((i) => {
+          // Long reference articles (ISBE runs to tens of thousands of words) show a generous part, then link out.
+          const FULL = 6000;
           const long = i.text.length > 900;
-          const shown = open === i.key || !long ? i.text : i.text.slice(0, 900).replace(/\s+\S*$/, "") + "…";
+          const cut = (n: number) => i.text.slice(0, n).replace(/\s+\S*$/, "") + "…";
+          const shown = !long ? i.text : open === i.key ? (i.text.length > FULL ? cut(FULL) : i.text) : cut(900);
           return (
             <article key={i.key} className="rounded-2xl border border-rule bg-card p-5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -170,11 +240,18 @@ function BookIntros() {
               </div>
               <p className="text-sm text-muted"><span className="italic">{i.title}</span> · {i.tradition}</p>
               <p className="mt-3 whitespace-pre-line font-serif text-[1.02rem] leading-relaxed text-ink-2">{shown}</p>
-              {long && (
-                <button onClick={() => setOpen(open === i.key ? null : i.key)} className="mt-1 text-sm text-accent hover:underline">
-                  {open === i.key ? "Show less" : "Read the full introduction"}
-                </button>
-              )}
+              <div className="mt-1 flex flex-wrap gap-x-5">
+                {long && (
+                  <button onClick={() => setOpen(open === i.key ? null : i.key)} className="text-sm text-accent hover:underline">
+                    {open === i.key ? "Show less" : i.text.length > FULL ? "Read more" : "Read the full introduction"}
+                  </button>
+                )}
+                {i.url && (open === i.key || !long) && (
+                  <a href={i.url} target="_blank" rel="noreferrer" className="text-sm text-accent hover:underline">
+                    Read the full article at the source ↗
+                  </a>
+                )}
+              </div>
               <p className="mt-3 border-t border-rule pt-2 font-mono text-[0.65rem] text-muted">[{i.key}] {i.license}</p>
             </article>
           );

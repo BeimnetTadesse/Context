@@ -1,10 +1,10 @@
 import { isEthiopic, isLicensedVersion, versionInfo, type VersionCode } from "@/lib/versions";
-import { guard, Marked, Moved, Omitted, Restored, Vn } from "./marks";
+import { guard, Highlight, Marked, Moved, Omitted, Restored, Vn } from "./marks";
 import { coveredBy, paragraphs, spanEnd, textOf } from "./text";
 import type { ReadViewProps } from "./types";
 
 /** Flowing text in one version, in the translation's own paragraphs. */
-export function FlowingView({ verses, code, licensed, licensedFailed, markFor, trail, onVerse, activeVerse }: ReadViewProps & { code: VersionCode }) {
+export function FlowingView({ verses, code, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights }: ReadViewProps & { code: VersionCode }) {
   const amh = code === "AMH";
   const ethiopic = isEthiopic(code);
   if (isLicensedVersion(code) && !licensed[code])
@@ -56,7 +56,7 @@ export function FlowingView({ verses, code, licensed, licensedFailed, markFor, t
               <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
                 <Vn n={v.verse} end={spanEnd(v, code, licensed)} onVerse={amh ? undefined : onVerse} active={activeVerse === v.verse} />
                 {amh && v.amh?.restored && <Restored />}
-                {ethiopic ? text : <Marked text={text} marks={markFor(v, code)} trail={trail} />}{" "}
+                <Highlight color={highlights[v.verse]}>{ethiopic ? text : <Marked text={text} marks={markFor(v, code)} trail={trail} />}</Highlight>{" "}
               </span>
             );
           })}

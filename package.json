@@ -15,11 +15,14 @@
     "data:fetch": "bash scripts/fetch-data.sh",
     "study:generate": "tsx --conditions=react-server scripts/generate.ts",
     "study:smoke": "tsx --conditions=react-server scripts/smoke-study.ts",
+    "study:books": "tsx --conditions=react-server scripts/generate-books.ts",
     "data:commentaries": "tsx scripts/fetch-commentaries.ts",
     "data:amharic": "tsx scripts/fetch-wordproject-amh.ts",
+    "data:reference": "tsx scripts/fetch-reference-works.ts",
     "db:commentaries": "tsx scripts/import-commentaries.ts",
     "db:translations": "tsx scripts/import-translations.ts",
     "db:amharic": "tsx scripts/import-amharic-restore.ts",
+    "db:reference": "tsx scripts/import-reference-works.ts",
     "cache:warm": "tsx scripts/warm-cache.ts"
   },
   "dependencies": {

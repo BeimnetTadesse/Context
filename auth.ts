@@ -29,7 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 });
 
-/** Notes and quiz answers made on this device before signing in move into the account. */
+/** Notes, highlights and quiz answers made on this device before signing in move into the account. */
 async function adoptDeviceNotes(accountId: number) {
   const deviceId = (await cookies()).get("cid")?.value;
   if (!deviceId || !/^[0-9a-f-]{36}$/.test(deviceId)) return;
@@ -41,6 +41,9 @@ async function adoptDeviceNotes(accountId: number) {
              select ${accountId}, item_id, guess, correct, created_at from assumption_guesses where user_id = ${device.id}
              on conflict (user_id, item_id) do nothing`;
     await tx`update ai_runs set user_id = ${accountId} where user_id = ${device.id}`;
+    await tx`insert into highlights (user_id, ord, color, created_at)
+             select ${accountId}, ord, color, created_at from highlights where user_id = ${device.id}
+             on conflict (user_id, ord) do nothing`;
     await tx`delete from users where id = ${device.id}`;
   });
 }

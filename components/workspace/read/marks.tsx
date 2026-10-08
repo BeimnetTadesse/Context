@@ -1,6 +1,7 @@
 // Small pieces of the reading view: verse numbers, provenance underlines, word differences, and the notes shown
 // where a version has no text for a verse.
 import { sharedWords } from "@/lib/diff";
+import { HIGHLIGHTS, type HighlightColor } from "@/lib/highlights";
 import type { Label } from "@/lib/labels";
 
 export interface PhraseMark {
@@ -131,5 +132,15 @@ export function Diffed({ base, text }: { base: string | undefined; text: string 
         ),
       )}
     </>
+  );
+}
+
+/** A reader's highlight behind a verse's words (wraps across lines like a highlighter). */
+export function Highlight({ color, children }: { color: HighlightColor | undefined; children: React.ReactNode }) {
+  if (!color) return <>{children}</>;
+  return (
+    <span className="rounded-sm px-0.5 [box-decoration-break:clone]" style={{ backgroundColor: HIGHLIGHTS[color].fill }}>
+      {children}
+    </span>
   );
 }

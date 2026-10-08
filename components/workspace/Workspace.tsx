@@ -8,7 +8,7 @@ import type { StudyData } from "@/lib/data/study";
 import type { Label } from "@/lib/labels";
 import { STEPS, type StepKey } from "@/lib/steps";
 import { studyPath } from "@/lib/bible/refs";
-import { StudyContext } from "@/components/study/context";
+import { postJson, StudyContext } from "@/components/study/context";
 import { ConnectionsStep, ContextStep, InterpretationsStep, LanguageStep, ObserveStep } from "@/components/study/Steps";
 import { ReflectStep, type SavedNote } from "@/components/study/Reflect";
 import type { AskRequest } from "./AskPanel";
@@ -18,6 +18,7 @@ import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
 import { LicensedNotices, useLicensed } from "./Licensed";
 import type { ReadPrefs } from "@/lib/versions";
+import type { ChapterHighlights, HighlightColor } from "@/lib/highlights";
 import { SelectionPopover } from "./SelectionPopover";
 import { TopBar } from "./TopBar";
 import { MethodNav } from "./MethodNav";
@@ -52,6 +53,7 @@ export function Workspace({
   notes,
   viewer,
   aiLocked,
+  initialHighlights,
 }: {
   data: ChapterData;
   books: NtBook[];
@@ -64,6 +66,7 @@ export function Workspace({
   notes: SavedNote[];
   viewer: ViewerInfo;
   aiLocked: boolean;
+  initialHighlights: ChapterHighlights;
 }) {
   const [step, setStep] = useState<StepKey>(initialStep);
   const [noteCount, setNoteCount] = useState(initialNoteCount);
@@ -74,6 +77,20 @@ export function Workspace({
   const [commentVerse, setCommentVerse] = useState<number | null>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
+  const [highlights, setHighlights] = useState<ChapterHighlights>(initialHighlights);
+  // Optimistic: colour the verses now, then save; if saving fails, put back what was there.
+  const highlight = (verses: number[], color: HighlightColor | null) => {
+    const before = highlights;
+    const next = { ...highlights };
+    for (const v of verses) {
+      if (color) next[v] = color;
+      else delete next[v];
+    }
+    setHighlights(next);
+    postJson<{ highlights: ChapterHighlights }>("/api/highlights", { book: data.book.slug, chapter: data.chapter, verses, color })
+      .then((r) => setHighlights(r.highlights))
+      .catch(() => setHighlights(before));
+  };
   const shownVersions = prefs.greek ? [] : [prefs.primary, ...prefs.compare];
   const licensed = useLicensed(shownVersions, data.book.slug, data.chapter);
   const [word, setWord] = useState<GreekWord | null>(null);
@@ -204,7 +221,7 @@ export function Workspace({
                 <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Tap a verse number for the commentators · Select any phrase to ask</p>
               )}
               <div className="mt-8" ref={textRef}>
-                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} />
+                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} />
                 <LicensedNotices codes={shownVersions} texts={licensed.texts} />
               </div>
               <SelectionPopover
@@ -212,6 +229,8 @@ export function Workspace({
                 onCheck={(t) => openAsk("check", t)}
                 onAsk={(t) => openAsk("ask", `What does “${t}” mean in this passage?`)}
                 onAskVerse={(ref) => openAsk("ask", `What does ${ref} mean in this passage?`)}
+                highlights={highlights}
+                onHighlight={highlight}
               />
             </>
           ) : step === "observe" ? (

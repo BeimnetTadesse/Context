@@ -73,6 +73,8 @@ Every model call is logged in `ai_runs`: the evidence it saw, the prompt version
 | OpenBible.info cross-references | Connections | CC BY |
 | Calvin, Henry, Gill, Clarke, JFB (via the Free Use Bible API) | Commentators | Public domain |
 | Tyndale Open Study Notes | Commentators | CC BY-SA 4.0 |
+| International Standard Bible Encyclopedia (1915), via internationalstandardbible.com | Book overviews and introductions | Public domain |
+| Easton’s Bible Dictionary (1897), via the Christian Classics Ethereal Library | Book overviews and introductions | Public domain |
 
 Copyrighted scholarship (BDAG, Louw-Nida, modern commentaries) is never displayed and never cited by the AI. Full notices are on `/copyright`; every source with its tier and orientation is on `/sources`.
 
@@ -96,6 +98,7 @@ npm run db:import       # once, on an empty database: verses, Greek words, lexic
 npm run db:translations # BSB, KJV, ASV, YLT
 npm run data:commentaries && npm run db:commentaries
 npm run data:amharic && npm run db:amharic   # restore the missing Amharic verses
+npm run data:reference && npm run db:reference   # ISBE and Easton articles on each book
 npm run dev             # http://localhost:3000
 ```
 
@@ -111,6 +114,7 @@ Without these keys the app still runs, just without those features.
 ### Useful commands
 
 - `npm test`: unit tests (reference parser, validator, verse numbering, text parsers, reading view, diff).
+- `npm run study:books -- --all`: prepare the 27 book overviews (resumable).
 - `npm run study:generate -- "Eph 3" "John 1"`: prepare chapter studies. `-- --all` regenerates every chapter whose prompt version is out of date (resumable).
 - `CONTEXT_CURATOR=1` in `.env.local`: shows the **Verify** button (local curation only; never in production).
 - `bash scripts/sync-neon.sh`: back up production, migrate it, and copy content across while keeping user data.

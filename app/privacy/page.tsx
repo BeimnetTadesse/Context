@@ -39,7 +39,7 @@ export default function Privacy() {
 
         <H>What you write</H>
         <p className="mt-2">
-          Notes, reflections and Text-or-Assumption answers are stored in Context’s database so you can see them again. They
+          Notes, reflections, highlights and Text-or-Assumption answers are stored in Context’s database so you can see them again. They
           are private to you and are not published or shared.
         </p>
 
@@ -78,11 +78,10 @@ export default function Privacy() {
 
         <H>Your choices</H>
         <p className="mt-2">
-          You can sign out at any time. To have your account and everything you wrote deleted, open a request on the project’s{" "}
-          <a href="https://github.com/BeimnetTadesse/Context/issues" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">
-            GitHub issues page
-          </a>{" "}
-          (without posting personal details publicly), and it will be removed.
+          On your <Link href="/account" className="text-accent underline underline-offset-4">profile page</Link> you can download
+          everything you’ve saved, delete your notes, highlights or quiz answers, or delete your account entirely. Deleting is
+          immediate and permanent. Questions you asked the research assistant stay in its accuracy log, no longer linked to you.
+          You can sign out at any time.
         </p>
       </main>
     </div>

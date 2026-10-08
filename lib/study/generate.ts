@@ -119,12 +119,14 @@ Judge ONLY whether the cited evidence supports the claim as worded:
 - unsupported: the evidence does not say this, the claim misattributes a view, or it adds facts not in the evidence.
 Be strict but fair. Do not use outside knowledge to rescue a claim; do not penalise a claim for being modest.`;
 
-export async function reviewChapter(book: Book, chapter: number, pack: EvidencePack) {
+/** Review a chapter's claims, or (chapter null) the book overview's claims. */
+export async function reviewChapter(book: Book, chapter: number | null, pack: EvidencePack) {
   const claims = await sql<{ id: number; label: string; statement: string; step: string; cites: { kind: string; locator: string | null; quote: string | null; key: string }[] }[]>`
     select c.id, c.label, c.statement, c.step,
            coalesce(json_agg(json_build_object('kind', s.source_type, 'locator', ci.locator, 'quote', ci.quote, 'key', s.key)) filter (where ci.id is not null), '[]') as cites
     from claims c left join citations ci on ci.claim_id = c.id left join sources s on s.id = ci.source_id
-    where c.book_id = ${book.id} and c.chapter = ${chapter} and c.origin = 'ai_draft' and c.status = 'unverified'
+    where c.book_id = ${book.id} and ${chapter === null ? sql`c.chapter is null and c.step = 'book'` : sql`c.chapter = ${chapter}`}
+      and c.origin = 'ai_draft' and c.status = 'unverified'
     group by c.id order by c.id`;
   if (!claims.length) return { reviewed: 0, supported: 0, partial: 0, unsupported: 0 };
 
@@ -146,10 +148,10 @@ export async function reviewChapter(book: Book, chapter: number, pack: EvidenceP
     kind: "review",
     schema: ReviewSchema,
     system: REVIEW_SYSTEM,
-    input: `Study of ${book.name} ${chapter}. Review each claim against its cited evidence.\n\n${lines.join("\n\n")}`,
+    input: `Study of ${chapter === null ? `the book of ${book.name}` : `${book.name} ${chapter}`}. Review each claim against its cited evidence.\n\n${lines.join("\n\n")}`,
     effort: "medium",
     maxTokens: 16000,
-    audit: { bookId: book.id, chapter },
+    audit: { bookId: book.id, chapter: chapter ?? undefined },
   });
 
   const counts = { reviewed: 0, supported: 0, partial: 0, unsupported: 0 };
