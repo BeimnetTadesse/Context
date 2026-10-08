@@ -1,10 +1,10 @@
 import { isEthiopic, isLicensedVersion, versionInfo, type ReadPrefs } from "@/lib/versions";
-import { Combined, Diffed, guard, Marked, Moved, Restored, Vn } from "./marks";
+import { Combined, Diffed, guard, Highlight, Marked, Moved, Restored, Vn } from "./marks";
 import { coveredBy, spanEnd, textOf } from "./text";
 import type { ReadViewProps } from "./types";
 
 /** Compare: one row per verse, a column per version. */
-export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, trail, onVerse, activeVerse }: ReadViewProps & { prefs: ReadPrefs }) {
+export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights }: ReadViewProps & { prefs: ReadPrefs }) {
   const cols = [prefs.primary, ...prefs.compare];
   const grid = cols.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
   return (
@@ -42,11 +42,13 @@ export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, 
                     <p className={ethiopic ? "ethiopic text-[1.05rem] leading-relaxed" : "font-serif text-[1.15rem] leading-relaxed"}>
                       <Vn n={v.verse} end={end} onVerse={i === 0 && !amh ? onVerse : undefined} active={activeVerse === v.verse} />
                       {amh && v.amh?.restored && <Restored />}{" "}
-                      {i === 0 ? (
-                        ethiopic ? text : <Marked text={text} marks={markFor(v, c)} trail={trail} />
-                      ) : (
-                        <Diffed base={diffBase} text={text} />
-                      )}
+                      <Highlight color={highlights[v.verse]}>
+                        {i === 0 ? (
+                          ethiopic ? text : <Marked text={text} marks={markFor(v, c)} trail={trail} />
+                        ) : (
+                          <Diffed base={diffBase} text={text} />
+                        )}
+                      </Highlight>
                     </p>
                   ) : combined ? (
                     <p className="text-sm">

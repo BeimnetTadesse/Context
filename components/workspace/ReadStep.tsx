@@ -1,6 +1,7 @@
 "use client";
 
 import type { GreekWord, VerseRow } from "@/lib/data/chapter";
+import type { ChapterHighlights } from "@/lib/highlights";
 import type { ReadPrefs, VersionCode } from "@/lib/versions";
 import type { LicensedText } from "./Licensed";
 import { CompareView } from "./read/CompareView";
@@ -22,6 +23,7 @@ export function ReadStep({
   activeVerse = null,
   licensed = {},
   licensedFailed = [],
+  highlights = {},
 }: {
   verses: VerseRow[];
   prefs: ReadPrefs;
@@ -33,11 +35,12 @@ export function ReadStep({
   trail?: string | null;
   onVerse?: (v: number) => void;
   activeVerse?: number | null;
+  highlights?: ChapterHighlights;
 }) {
   if (prefs.greek) return <GreekView verses={verses} selected={selected} onSelectWord={onSelectWord} />;
 
   // Provenance underlines are anchored to the WEB wording, so they only show on WEB.
   const markFor = (v: VerseRow, code: VersionCode) => (code === "WEB" ? marks.filter((m) => m.ord === v.ord) : []);
-  const shared = { verses, licensed, licensedFailed, markFor, trail, onVerse, activeVerse };
+  const shared = { verses, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights };
   return prefs.compare.length ? <CompareView {...shared} prefs={prefs} /> : <FlowingView {...shared} code={prefs.primary} />;
 }

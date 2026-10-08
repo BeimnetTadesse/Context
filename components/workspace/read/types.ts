@@ -1,4 +1,5 @@
 import type { VerseRow } from "@/lib/data/chapter";
+import type { ChapterHighlights } from "@/lib/highlights";
 import type { VersionCode } from "@/lib/versions";
 import type { LicensedText } from "../Licensed";
 import type { PhraseMark } from "./marks";
@@ -13,4 +14,6 @@ export interface ReadViewProps {
   trail: string | null;
   onVerse?: (v: number) => void;
   activeVerse: number | null;
+  /** The reader's highlights in this chapter: verse → colour. */
+  highlights: ChapterHighlights;
 }

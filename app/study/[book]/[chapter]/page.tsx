@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Workspace } from "@/components/workspace/Workspace";
 import { getChapter, getNtBooks } from "@/lib/data/chapter";
+import { chapterHighlights } from "@/lib/data/highlights";
 import { getStudy } from "@/lib/data/study";
 import { sql } from "@/lib/db";
 import type { Label } from "@/lib/labels";
@@ -28,7 +29,7 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
   const prefs = parsePrefs(decodeURIComponent((await cookies()).get("readPrefs")?.value ?? ""));
 
   // This reader's private state for the chapter.
-  const [guessRows, noteRows, countRows] = userId
+  const [guessRows, noteRows, countRows, highlights] = userId
     ? await Promise.all([
         sql<{ item_id: number; guess: Label }[]>`
           select g.item_id, g.guess from assumption_guesses g join reflection_items r on r.id = g.item_id
@@ -37,8 +38,9 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
           select id, kind, item_id, body from notes
           where user_id = ${userId} and book_id = ${data.book.id} and chapter = ${data.chapter} order by created_at desc`,
         sql<{ n: number }[]>`select count(*)::int as n from notes where user_id = ${userId} and kind <> 'text_issue'`,
+        chapterHighlights(userId, data.book.id, data.chapter),
       ])
-    : [[], [], [{ n: 0 }]];
+    : [[], [], [{ n: 0 }], {}];
 
   return (
     <Workspace
@@ -53,6 +55,7 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
       notes={noteRows.map((n) => ({ id: n.id, kind: n.kind, itemId: n.item_id, body: n.body }))}
       viewer={{ signedIn: viewer.signedIn, name: viewer.name, image: viewer.image }}
       aiLocked={authConfigured() && !viewer.signedIn}
+      initialHighlights={highlights}
     />
   );
 }
