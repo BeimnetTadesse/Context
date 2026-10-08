@@ -218,7 +218,7 @@ export function Workspace({
                 <ProvenanceToggle on={layer} onToggle={() => setLayer(!layer)} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />
               </div>
               {!prefs.greek && (
-                <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Tap a verse number for the commentators · Select any phrase to ask</p>
+                <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Tap a verse number for commentators and Church Fathers · Select any phrase to ask</p>
               )}
               <div className="mt-8" ref={textRef}>
                 <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} />

@@ -8,6 +8,7 @@ import type { VerseRow } from "@/lib/data/chapter";
 import { ClaimCard, StatusMark, WhyDrawer } from "./Claim";
 import { useStudy } from "./context";
 import { PrepareStudy } from "./PrepareStudy";
+import { ChurchFathers } from "./ChurchFathers";
 import { ReceptionTimeline } from "./Commentators";
 
 const Eyebrow = ({ children }: { children: React.ReactNode }) => <p className="eyebrow mb-4 mt-12 text-muted">{children}</p>;
@@ -381,6 +382,7 @@ export function InterpretationsStep({ verses }: { verses: number[] }) {
           </div>
         </section>
       ))}
+      <ChurchFathers verses={verses} initial={firstRange ? Number(firstRange) : verses[0]} />
       <ReceptionTimeline verses={verses} initial={firstRange ? Number(firstRange) : verses[0]} />
     </>
   );

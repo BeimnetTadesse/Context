@@ -14,6 +14,7 @@ Live: **https://context-black.vercel.app** · Product #2 of *3 Products in 30 Da
   - Compare up to three versions at once. Words that differ are highlighted, but only between texts in the same script.
 - **Six provenance labels** on every claim: Explicit · Inference · Historical · Scholarly · Tradition · Personal.
 - **Commentators on every verse:** Calvin, Matthew Henry, Gill, Clarke, Jamieson-Fausset-Brown and the Tyndale Open Study Notes, with book introductions.
+- **Church Fathers on every verse:** exact quotes from Chrysostom, Augustine, Tertullian, Cyril of Alexandria and 80 others (to AD 750), kept apart from the commentators and labelled Tradition. Only old public-domain translations are shown; AI-made and modern translations are left out.
 - **Show me why** on every claim: claim → evidence → source (tier, orientation, locator) → how it was produced.
 - **Ask:** select any phrase or type a question. Answers come only from the chapter's evidence, are labelled and cited piece by piece, or say honestly "not enough evidence".
 - **Text or Assumption?:** a quiz that asks you to label statements before revealing the answer, plus a checker for your own statements.
@@ -75,6 +76,7 @@ Every model call is logged in `ai_runs`: the evidence it saw, the prompt version
 | Tyndale Open Study Notes | Commentators | CC BY-SA 4.0 |
 | International Standard Bible Encyclopedia (1915), via internationalstandardbible.com | Book overviews and introductions | Public domain |
 | Easton’s Bible Dictionary (1897), via the Christian Classics Ethereal Library | Book overviews and introductions | Public domain |
+| Church Fathers to AD 750 (HistoricalChristianFaith Commentaries Database): Catena Aurea (1841–45), Ante-Nicene and Nicene and Post-Nicene Fathers (1885–1900) | Church Fathers | Public domain |
 
 Copyrighted scholarship (BDAG, Louw-Nida, modern commentaries) is never displayed and never cited by the AI. Full notices are on `/copyright`; every source with its tier and orientation is on `/sources`.
 
@@ -99,6 +101,7 @@ npm run db:translations # BSB, KJV, ASV, YLT
 npm run data:commentaries && npm run db:commentaries
 npm run data:amharic && npm run db:amharic   # restore the missing Amharic verses
 npm run data:reference && npm run db:reference   # ISBE and Easton articles on each book
+npm run data:fathers && npm run db:fathers         # Church Fathers quotes (needs git and sqlite3)
 npm run dev             # http://localhost:3000
 ```
 
