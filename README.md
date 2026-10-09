@@ -2,7 +2,7 @@
 
 **Understand before you interpret.** A study workspace for the New Testament: the text first, then its structure, history, language and the range of credible interpretation, with every claim labelled and every source shown.
 
-Live: **https://context-black.vercel.app** · Product #2 of *3 Products in 30 Days*.
+Live: **https://www.context1.io** · Product #2 of *3 Products in 30 Days*.
 
 ## What it does
 

@@ -3,7 +3,7 @@
 // Run: npm run cache:warm            (or: npm run cache:warm -- https://preview-url.vercel.app)
 import { NT_BOOKS } from "../lib/bible/books";
 
-const SITE = (process.argv[2] ?? "https://context-black.vercel.app").replace(/\/$/, "");
+const SITE = (process.argv[2] ?? "https://www.context1.io").replace(/\/$/, "");
 const PARALLEL = 4;
 
 async function hit(path: string) {
