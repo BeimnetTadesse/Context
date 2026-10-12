@@ -144,5 +144,10 @@ components/workspace/read/   the Read step's three views (Greek, compare, flowin
 
 Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The code is released under the [MIT License](LICENSE). The Bible texts, lexicons, cross-references and commentaries
-are **not** covered by it: each keeps its own license, listed under Sources above and on `/copyright`.
+The code is **source-available** under the [PolyForm Noncommercial License 1.0.0](LICENSE): you may read, use, copy
+and change it for noncommercial purposes, such as personal study, churches, schools, research and charities. Selling
+it, or using it in a paid product or service, needs a separate licence from the copyright holder. (Versions published
+before 12 October 2026 were under the MIT License.)
+
+The Bible texts, lexicons, cross-references and commentaries are **not** covered by the code licence: each keeps its
+own license, listed under Sources above and on `/copyright`.

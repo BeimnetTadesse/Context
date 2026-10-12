@@ -30,6 +30,13 @@ Never commit `.env.local` or any key.
 Add or update a test when you change logic that could go wrong without crashing, like verse numbering,
 the validator or the reference parser. Tests sit next to the code (`*.test.ts`).
 
+## Licence of contributions
+
+Context is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE). By opening a pull request,
+you confirm that the contribution is your own work (or you have the right to submit it), and you agree that it may be
+used under the project's licence and that Beimnet Tadesse may also license it to others, including commercially.
+You keep the copyright in your contribution.
+
 ## House rules (please read)
 
 These protect readers and the licences Context depends on:
