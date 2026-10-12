@@ -17,10 +17,17 @@ const ethiopic = Noto_Serif_Ethiopic({ variable: "--font-ethiopic", subsets: ["e
 // Needed for Google's brand verification of the "Sign in with Google" screen.
 const GOOGLE_SITE_VERIFICATION = "";
 
+const DESCRIPTION = "Slow down. Read deeply. Understand the context. Every claim labelled, every source shown.";
+
+// Link previews (Telegram, WhatsApp, LinkedIn, X…): the share image is app/opengraph-image.png and
+// app/twitter-image.png. Each page's own <title> is used as the preview title.
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.context1.io"),
   title: "Context — a study workspace for Scripture",
-  description:
-    "Slow down. Read deeply. Understand the context. Every claim labelled, every source shown.",
+  description: DESCRIPTION,
+  applicationName: "Context",
+  openGraph: { type: "website", siteName: "Context", locale: "en", description: DESCRIPTION },
+  twitter: { card: "summary_large_image", description: DESCRIPTION },
   ...(GOOGLE_SITE_VERIFICATION ? { verification: { google: GOOGLE_SITE_VERIFICATION } } : {}),
 };
 
