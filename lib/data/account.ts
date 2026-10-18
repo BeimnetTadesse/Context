@@ -2,6 +2,7 @@ import "server-only";
 import { sql } from "@/lib/db";
 import type { HighlightColor } from "@/lib/highlights";
 import type { Label } from "@/lib/labels";
+import type { NoteDoc } from "@/lib/notes/doc";
 
 // Everything one reader has saved: for the profile page, the notebook, and "download my data".
 
@@ -24,7 +25,7 @@ export async function getAccount(userId: number) {
 }
 
 export type NoteItem = {
-  id: number; kind: string; body: string; created_at: Date; book: string; slug: string; chapter: number;
+  id: number; kind: string; body: string; doc: NoteDoc | null; created_at: Date; book: string; slug: string; chapter: number;
   verse: number | null; prompt: string | null;
 };
 export type HighlightItem = { ord: number; color: HighlightColor; created_at: Date; book: string; slug: string; chapter: number; verse: number; text: string };
@@ -33,7 +34,7 @@ export type GuessItem = { item_id: number; guess: Label; expected: Label; correc
 export async function getNotebook(userId: number) {
   const [notes, highlights, guesses] = await Promise.all([
     sql<NoteItem[]>`
-      select n.id, n.kind, n.body, n.created_at, b.name as book, b.slug, n.chapter, v.verse, r.text as prompt
+      select n.id, n.kind, n.body, n.doc, n.created_at, b.name as book, b.slug, n.chapter, v.verse, r.text as prompt
       from notes n join books b on b.id = n.book_id
       left join verses v on v.ord = n.start_ord left join reflection_items r on r.id = n.item_id
       where n.user_id = ${userId} and n.kind <> 'text_issue'

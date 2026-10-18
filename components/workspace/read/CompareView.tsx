@@ -1,10 +1,10 @@
 import { isEthiopic, isLicensedVersion, versionInfo, type ReadPrefs } from "@/lib/versions";
-import { Combined, Diffed, guard, Highlight, Marked, Moved, Restored, Vn } from "./marks";
+import { Combined, Diffed, guard, Highlight, Marked, Moved, NoteChip, Restored, Vn } from "./marks";
 import { coveredBy, spanEnd, textOf } from "./text";
 import type { ReadViewProps } from "./types";
 
 /** Compare: one row per verse, a column per version. */
-export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights }: ReadViewProps & { prefs: ReadPrefs }) {
+export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText }: ReadViewProps & { prefs: ReadPrefs }) {
   const cols = [prefs.primary, ...prefs.compare];
   const grid = cols.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
   return (
@@ -44,11 +44,12 @@ export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, 
                       {amh && v.amh?.restored && <Restored />}{" "}
                       <Highlight color={highlights[v.verse]}>
                         {i === 0 ? (
-                          ethiopic ? text : <Marked text={text} marks={markFor(v, c)} trail={trail} />
+                          ethiopic ? text : <Marked text={text} marks={markFor(v, c)} trail={trail} noted={notedText[v.verse]} />
                         ) : (
                           <Diffed base={diffBase} text={text} />
                         )}
                       </Highlight>
+                      {i === 0 && <NoteChip verse={v.verse} count={noted[v.verse]} onOpen={onVerse} />}
                     </p>
                   ) : combined ? (
                     <p className="text-sm">

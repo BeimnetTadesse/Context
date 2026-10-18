@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Dot } from "@/components/ui";
 import { PageHeader } from "@/components/PageHeader";
 import { RemoveButton } from "@/components/account/RemoveButton";
+import { EditableNote } from "@/components/notes/EditableNote";
+import { NoteView } from "@/components/notes/NoteView";
 import { getNotebook, REFLECTION_KINDS, type GuessItem, type HighlightItem, type NoteItem } from "@/lib/data/account";
 import { HIGHLIGHTS } from "@/lib/highlights";
 import { LABEL_INFO, type Label } from "@/lib/labels";
@@ -132,7 +134,14 @@ function NoteRow({ n }: { n: NoteItem }) {
         <RemoveButton target={{ note: n.id }} />
       </div>
       {n.prompt && <p className="mt-2 text-sm italic text-muted">{n.prompt}</p>}
-      <p className="mt-2 whitespace-pre-wrap font-serif text-[1.15rem] leading-relaxed">{n.body}</p>
+      {/* Notes on a phrase can be edited here; reflections are edited in the Reflect step. */}
+      {n.kind === "note" ? (
+        <EditableNote id={n.id} doc={n.doc} body={n.body} />
+      ) : n.doc ? (
+        <NoteView doc={n.doc} className="mt-2 font-serif text-[1.15rem] leading-relaxed" />
+      ) : (
+        <p className="mt-2 whitespace-pre-wrap font-serif text-[1.15rem] leading-relaxed">{n.body}</p>
+      )}
     </li>
   );
 }

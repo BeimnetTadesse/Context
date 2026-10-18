@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { docToText, MAX_TEXT, parseDoc, safeHref } from "./doc";
+import { docToText, isEmptyDoc, MAX_TEXT, parseDoc, quotedPhrase, safeHref, textToDoc, withQuote } from "./doc";
 
 const p = (text: string, marks?: unknown[]) => ({ type: "paragraph", content: [{ type: "text", text, ...(marks ? { marks } : {}) }] });
 const doc = (...content: unknown[]) => ({ type: "doc", content });
@@ -83,5 +83,46 @@ describe("docToText", () => {
 
   it("is empty for an empty document", () => {
     expect(docToText(parseDoc(doc({ type: "paragraph" }))!)).toBe("");
+  });
+});
+
+describe("textToDoc", () => {
+  it("turns each line into a paragraph and round-trips through docToText", () => {
+    const text = "“In the beginning” — first thought\n\nsecond thought";
+    const d = textToDoc(text);
+    expect(parseDoc(d)).toEqual(d);
+    expect(docToText(d)).toBe(text);
+  });
+});
+
+describe("withQuote", () => {
+  it("puts the selected phrase first, as a quote", () => {
+    const d = withQuote("“the Word”", parseDoc(doc(p("my note")))!);
+    expect(parseDoc(d)).toEqual(d);
+    expect(docToText(d)).toBe("> “the Word”\nmy note");
+  });
+});
+
+describe("isEmptyDoc", () => {
+  it("an editor with nothing typed is empty", () => {
+    expect(isEmptyDoc(parseDoc(doc({ type: "paragraph" }))!)).toBe(true);
+    expect(isEmptyDoc(parseDoc(doc(p("x")))!)).toBe(false);
+  });
+});
+
+describe("quotedPhrase", () => {
+  const note = parseDoc(doc(p("my note")))!;
+  it("reads the quote saved with a note on a phrase", () => {
+    expect(quotedPhrase(withQuote("“the Word was God”", note), "")).toBe("the Word was God");
+  });
+  it("has none for a note on licensed text, which keeps only the reference", () => {
+    expect(quotedPhrase(withQuote("John 1:1 (NIV)", note), "")).toBeNull();
+  });
+  it("reads older plain notes", () => {
+    expect(quotedPhrase(null, "“In the beginning” — first thought")).toBe("In the beginning");
+    expect(quotedPhrase(null, "John 1:1 (NIV) — a thought")).toBeNull();
+  });
+  it("has none for a note without a quote", () => {
+    expect(quotedPhrase(note, "my note")).toBeNull();
   });
 });

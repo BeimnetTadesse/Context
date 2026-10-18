@@ -138,3 +138,32 @@ export function docToText(doc: NoteDoc): string {
   };
   return doc.content.flatMap(lines).join("\n").trim();
 }
+
+/** An old plain-text note as a document, so it can be opened in the editor: one paragraph per line. */
+export function textToDoc(text: string): NoteDoc {
+  const content: Block[] = text.split("\n").map((line) => (line ? { type: "paragraph", content: [{ type: "text", text: line }] } : { type: "paragraph" }));
+  return { type: "doc", content };
+}
+
+/** True when the reader hasn't written anything yet (the editor's empty state is one empty paragraph). */
+export const isEmptyDoc = (doc: NoteDoc) => docToText(doc) === "";
+
+/**
+ * A note on a selected phrase: the phrase (or, for licensed text, only its reference) as a quote, then the reader's note.
+ * The quote is part of the document, so it is kept when the note is edited later.
+ */
+export function withQuote(quote: string, doc: NoteDoc): NoteDoc {
+  return { type: "doc", content: [{ type: "blockquote", content: [{ type: "paragraph", content: [{ type: "text", text: quote }] }] }, ...doc.content] };
+}
+
+/**
+ * The words a note was written on, as they appear in the text: the “…” quote the popover saves first in the note,
+ * or, for older plain notes, the “…” before the dash. Notes on licensed text keep only a reference, so they have none.
+ */
+export function quotedPhrase(doc: NoteDoc | null, body: string): string | null {
+  if (!doc) return /^“([\s\S]+?)” — /.exec(body)?.[1] ?? null;
+  const first = doc.content[0];
+  if (first?.type !== "blockquote" || first.content[0]?.type !== "paragraph") return null;
+  const text = (first.content[0].content ?? []).map((n) => (n.type === "text" ? n.text : "")).join("");
+  return /^“([\s\S]+)”$/.exec(text)?.[1] ?? null;
+}

@@ -15,15 +15,21 @@ interface Range {
   start: number;
   end: number;
   mark?: PhraseMark;
+  note?: boolean;
 }
 
 /** Split a verse into plain text, provenance underlines (with a margin letter) and word-trail highlights. */
-export function Marked({ text, marks, trail }: { text: string; marks: PhraseMark[]; trail: string | null }) {
+export function Marked({ text, marks, trail, noted = [] }: { text: string; marks: PhraseMark[]; trail: string | null; noted?: string[] }) {
   const lower = text.toLowerCase();
   const ranges: Range[] = [];
   for (const m of marks) {
     const i = lower.indexOf(m.quote.toLowerCase());
     if (i >= 0) ranges.push({ start: i, end: i + m.quote.length, mark: m });
+  }
+  // Phrases the reader wrote a note on (only where the exact words are in this version).
+  for (const q of noted) {
+    const i = text.indexOf(q);
+    if (i >= 0) ranges.push({ start: i, end: i + q.length, note: true });
   }
   if (trail) {
     const re = new RegExp(`\\b${trail}\\w*`, "gi");
@@ -37,7 +43,11 @@ export function Marked({ text, marks, trail }: { text: string; marks: PhraseMark
     out.push(text.slice(pos, r.start));
     const piece = text.slice(r.start, r.end);
     out.push(
-      r.mark ? (
+      r.note ? (
+        <span key={r.start} title="You wrote a note on this" className="rounded-sm bg-[var(--l-personal-bg)] underline decoration-[var(--l-personal)] decoration-dotted decoration-2 underline-offset-[6px] [box-decoration-break:clone]">
+          {piece}
+        </span>
+      ) : r.mark ? (
         <span key={r.start}>
           <span
             className="underline decoration-2 underline-offset-[6px]"
@@ -71,6 +81,29 @@ export function Vn({ n, end, onVerse, active }: { n: number; end?: number | null
         {label}
       </button>
     </sup>
+  );
+}
+
+/**
+ * The reader has written on this verse: a small chip at the end of it that opens their notes in the margin.
+ * Not selectable, so copying the text never picks it up.
+ */
+export function NoteChip({ verse, count, onOpen }: { verse: number; count?: number; onOpen?: (v: number) => void }) {
+  if (!count) return null;
+  const label = count > 1 ? `${count} notes` : "Note";
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen?.(verse)}
+      disabled={!onOpen}
+      title={`Your ${count > 1 ? `${count} notes` : "note"} on verse ${verse}`}
+      className="mx-1 inline-flex select-none items-center gap-1 rounded-full border border-[var(--l-personal)]/35 bg-[var(--l-personal-bg)] px-2 py-px align-[0.15em] font-sans text-[0.68rem] font-medium leading-4 text-ink-2 transition hover:border-[var(--l-personal)] hover:text-ink"
+    >
+      <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
+        <path d="M8.2 1.6 10.4 3.8 4.3 9.9 1.6 10.4 2.1 7.7z" />
+      </svg>
+      {label}
+    </button>
   );
 }
 

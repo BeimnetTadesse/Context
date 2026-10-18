@@ -16,4 +16,8 @@ export interface ReadViewProps {
   activeVerse: number | null;
   /** The reader's highlights in this chapter: verse → colour. */
   highlights: ChapterHighlights;
+  /** How many notes the reader has on each verse: verse → count. */
+  noted: Record<number, number>;
+  /** The phrases those notes were written on: verse → phrases. */
+  notedText: Record<number, string[]>;
 }

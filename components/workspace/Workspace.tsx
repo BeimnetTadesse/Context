@@ -13,6 +13,7 @@ import { ConnectionsStep, ContextStep, InterpretationsStep, LanguageStep, Observ
 import { ReflectStep, type SavedNote } from "@/components/study/Reflect";
 import type { AskRequest } from "./AskPanel";
 import { Margin } from "./Margin";
+import { notedPhrases, notedVerses, type VerseNote } from "@/components/notes/VerseNotes";
 import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
 import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
@@ -54,6 +55,7 @@ export function Workspace({
   viewer,
   aiLocked,
   initialHighlights,
+  verseNotes: initialVerseNotes,
 }: {
   data: ChapterData;
   books: NtBook[];
@@ -67,6 +69,7 @@ export function Workspace({
   viewer: ViewerInfo;
   aiLocked: boolean;
   initialHighlights: ChapterHighlights;
+  verseNotes: VerseNote[];
 }) {
   const [step, setStep] = useState<StepKey>(initialStep);
   const [noteCount, setNoteCount] = useState(initialNoteCount);
@@ -78,6 +81,9 @@ export function Workspace({
   const textRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
   const [highlights, setHighlights] = useState<ChapterHighlights>(initialHighlights);
+  const [verseNotes, setVerseNotes] = useState<VerseNote[]>(initialVerseNotes);
+  const noted = useMemo(() => notedVerses(verseNotes), [verseNotes]);
+  const notedText = useMemo(() => notedPhrases(verseNotes), [verseNotes]);
   // Optimistic: colour the verses now, then save; if saving fails, put back what was there.
   const highlight = (verses: number[], color: HighlightColor | null) => {
     const before = highlights;
@@ -221,7 +227,7 @@ export function Workspace({
                 <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Tap a verse number for commentators and Church Fathers · Select any phrase to ask</p>
               )}
               <div className="mt-8" ref={textRef}>
-                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} />
+                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} noted={noted} notedText={notedText} />
                 <LicensedNotices codes={shownVersions} texts={licensed.texts} />
               </div>
               <SelectionPopover
@@ -231,6 +237,7 @@ export function Workspace({
                 onAskVerse={(ref) => openAsk("ask", `What does ${ref} mean in this passage?`)}
                 highlights={highlights}
                 onHighlight={highlight}
+                onNoteSaved={(n) => setVerseNotes((all) => [...all, n])}
               />
             </>
           ) : step === "observe" ? (
@@ -278,7 +285,7 @@ export function Workspace({
         >
           <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-rule lg:hidden" />
           <div className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:pb-8">
-            <Margin step={step} prefs={prefs} word={word} onCloseWord={() => setWord(null)} tab={tab} setTab={setTab} askRequest={askRequest} letters={letters} commentVerse={step === "read" ? commentVerse : null} onCloseVerse={() => setCommentVerse(null)} />
+            <Margin step={step} prefs={prefs} word={word} onCloseWord={() => setWord(null)} tab={tab} setTab={setTab} askRequest={askRequest} letters={letters} commentVerse={step === "read" ? commentVerse : null} onCloseVerse={() => setCommentVerse(null)} verseNotes={verseNotes} />
           </div>
         </aside>
       </div>
