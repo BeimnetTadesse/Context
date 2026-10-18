@@ -22,7 +22,7 @@ import { quotedPhrase } from "@/lib/notes/doc";
  * The right-hand column (Margin: commentators, lexicon, cited sources; and Ask). Switched off for now while the
  * notes take the left column; everything that opens it (verse numbers, Ask, Text or Assumption?) is hidden with it.
  */
-const SHOW_MARGIN = true;
+const SHOW_MARGIN = false;
 import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
 import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
