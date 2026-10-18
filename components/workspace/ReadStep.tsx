@@ -24,6 +24,9 @@ export function ReadStep({
   licensed = {},
   licensedFailed = [],
   highlights = {},
+  noted = {},
+  notedText = {},
+  onOpenNotes,
 }: {
   verses: VerseRow[];
   prefs: ReadPrefs;
@@ -36,11 +39,15 @@ export function ReadStep({
   onVerse?: (v: number) => void;
   activeVerse?: number | null;
   highlights?: ChapterHighlights;
+  noted?: Record<number, number>;
+  notedText?: Record<number, string[]>;
+  /** A Note chip was clicked. */
+  onOpenNotes?: (v: number) => void;
 }) {
   if (prefs.greek) return <GreekView verses={verses} selected={selected} onSelectWord={onSelectWord} />;
 
   // Provenance underlines are anchored to the WEB wording, so they only show on WEB.
   const markFor = (v: VerseRow, code: VersionCode) => (code === "WEB" ? marks.filter((m) => m.ord === v.ord) : []);
-  const shared = { verses, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights };
+  const shared = { verses, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes };
   return prefs.compare.length ? <CompareView {...shared} prefs={prefs} /> : <FlowingView {...shared} code={prefs.primary} />;
 }

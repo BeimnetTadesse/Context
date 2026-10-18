@@ -3,10 +3,13 @@ import Link from "next/link";
 import { Dot } from "@/components/ui";
 import { PageHeader } from "@/components/PageHeader";
 import { RemoveButton } from "@/components/account/RemoveButton";
+import { EditableNote } from "@/components/notes/EditableNote";
+import { NoteView } from "@/components/notes/NoteView";
 import { getNotebook, REFLECTION_KINDS, type GuessItem, type HighlightItem, type NoteItem } from "@/lib/data/account";
 import { HIGHLIGHTS } from "@/lib/highlights";
 import { LABEL_INFO, type Label } from "@/lib/labels";
 import { currentViewer } from "@/lib/user";
+import { isVersion, versionInfo } from "@/lib/versions";
 
 export const metadata: Metadata = { title: "Notebook · Context", robots: { index: false } };
 
@@ -127,12 +130,37 @@ function NoteRow({ n }: { n: NoteItem }) {
           {n.verse ? (
             <Link href={`/study/${n.slug}/${n.chapter}#v${n.verse}`} className="hover:text-accent">· {n.chapter}:{n.verse}</Link>
           ) : null}
+          {n.version && isVersion(n.version) ? <span>· {versionInfo(n.version).short}</span> : null}
           · {date(n.created_at)}
         </p>
         <RemoveButton target={{ note: n.id }} />
       </div>
       {n.prompt && <p className="mt-2 text-sm italic text-muted">{n.prompt}</p>}
-      <p className="mt-2 whitespace-pre-wrap font-serif text-[1.15rem] leading-relaxed">{n.body}</p>
+      {/* Notes on a phrase can be edited here; reflections are edited in the Reflect step. */}
+      {n.kind === "note" ? (
+        <EditableNote id={n.id} doc={n.doc} body={n.body} />
+      ) : n.doc ? (
+        <NoteView doc={n.doc} className="mt-2 font-serif text-[1.15rem] leading-relaxed" />
+      ) : (
+        <p className="mt-2 whitespace-pre-wrap font-serif text-[1.15rem] leading-relaxed">{n.body}</p>
+      )}
+      {n.replies.length > 0 && (
+        <ul className="mt-4 space-y-3 border-l-2 border-rule pl-4">
+          {n.replies.map((r) => (
+            <li key={r.id}>
+              <p className="eyebrow flex items-center justify-between gap-3 !text-[0.6rem] text-muted">
+                <span>Reply · {date(new Date(r.created_at))}</span>
+                <RemoveButton target={{ note: r.id }} />
+              </p>
+              {r.doc ? (
+                <NoteView doc={r.doc} className="mt-1 font-serif text-[1.02rem] leading-relaxed" />
+              ) : (
+                <p className="mt-1 whitespace-pre-wrap font-serif text-[1.02rem] leading-relaxed">{r.body}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </li>
   );
 }

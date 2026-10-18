@@ -1,7 +1,8 @@
 import { clean, json, ntChapter } from "@/lib/api";
 import { sql } from "@/lib/db";
-import { docToText, parseDoc } from "@/lib/notes/doc";
+import { docToText, parseDoc, type NoteDoc } from "@/lib/notes/doc";
 import { currentUserId, ensureUserId } from "@/lib/user";
+import { isVersion } from "@/lib/versions";
 
 const KINDS = ["note", "reflection", "text_says", "i_bring", "text_issue"];
 
@@ -12,6 +13,7 @@ export async function POST(req: Request) {
   const doc = b.doc === undefined ? null : parseDoc(b.doc);
   if (b.doc !== undefined && !doc) return json({ error: "bad_request" }, 400);
   const body = doc ? docToText(doc) : clean(b.body, 5000);
+  if (b.parentId !== undefined) return reply(b.parentId, doc, body);
   if (!target || !KINDS.includes(b.kind) || !body) return json({ error: "bad_request" }, 400);
   const userId = await ensureUserId();
   const ord = async (verse: unknown) => {
@@ -29,10 +31,29 @@ export async function POST(req: Request) {
   // One answer per prompt: re-saving replaces it.
   if (itemId) await sql`delete from notes where user_id = ${userId} and item_id = ${itemId}`;
   const [row] = await sql<{ id: number }[]>`
-    insert into notes (user_id, book_id, chapter, start_ord, end_ord, kind, item_id, body, doc)
-    values (${userId}, ${target.book.id}, ${target.chapter}, ${start}, ${start}, ${b.kind}, ${itemId}, ${body}, ${doc ? sql.json(doc) : null}) returning id`;
-  const [{ count }] = await sql<{ count: number }[]>`select count(*)::int as count from notes where user_id = ${userId} and kind <> 'text_issue'`;
-  return json({ id: row.id, count });
+    insert into notes (user_id, book_id, chapter, start_ord, end_ord, kind, item_id, body, doc, version)
+    values (${userId}, ${target.book.id}, ${target.chapter}, ${start}, ${start}, ${b.kind}, ${itemId}, ${body}, ${doc ? sql.json(doc) : null},
+            ${isVersion(b.version) ? b.version : null}) returning id`;
+  return json({ id: row.id, count: await noteCount(userId) });
+}
+
+/** Notes in the reader's notebook count; replies belong to their note and don't. */
+async function noteCount(userId: number) {
+  const [{ count }] = await sql<{ count: number }[]>`select count(*)::int as count from notes where user_id = ${userId} and kind <> 'text_issue' and parent_id is null`;
+  return count;
+}
+
+/** A reply to one of the reader's own notes: same chapter and verse as the note; threads are one level deep. */
+async function reply(parentId: unknown, doc: NoteDoc | null, body: string) {
+  if (!Number.isInteger(parentId) || !body) return json({ error: "bad_request" }, 400);
+  const userId = await currentUserId();
+  if (!userId) return json({ error: "not_found" }, 404);
+  const [row] = await sql<{ id: number; created_at: Date }[]>`
+    insert into notes (user_id, book_id, chapter, start_ord, end_ord, kind, body, doc, parent_id)
+    select user_id, book_id, chapter, start_ord, end_ord, kind, ${body}, ${doc ? sql.json(doc) : null}, id from notes
+    where id = ${parentId as number} and user_id = ${userId} and kind = 'note' and parent_id is null
+    returning id, created_at`;
+  return row ? json({ id: row.id, createdAt: row.created_at }) : json({ error: "not_found" }, 404);
 }
 
 /** Edit a note's text. Only the reader's own notes, and not text-problem reports (those are feedback, not notes). */

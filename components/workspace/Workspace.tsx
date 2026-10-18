@@ -13,6 +13,16 @@ import { ConnectionsStep, ContextStep, InterpretationsStep, LanguageStep, Observ
 import { ReflectStep, type SavedNote } from "@/components/study/Reflect";
 import type { AskRequest } from "./AskPanel";
 import { Margin } from "./Margin";
+import { notedPhrases, notedVerses, type VerseNote } from "@/components/notes/VerseNotes";
+import { ChapterNotes } from "@/components/notes/ChapterNotes";
+import { NotesRail } from "@/components/notes/NotesRail";
+import { quotedPhrase } from "@/lib/notes/doc";
+
+/**
+ * The right-hand column (Margin: commentators, lexicon, cited sources; and Ask). Switched off for now while the
+ * notes take the left column; everything that opens it (verse numbers, Ask, Text or Assumption?) is hidden with it.
+ */
+const SHOW_MARGIN = false;
 import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
 import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
@@ -54,6 +64,7 @@ export function Workspace({
   viewer,
   aiLocked,
   initialHighlights,
+  verseNotes: initialVerseNotes,
 }: {
   data: ChapterData;
   books: NtBook[];
@@ -67,6 +78,7 @@ export function Workspace({
   viewer: ViewerInfo;
   aiLocked: boolean;
   initialHighlights: ChapterHighlights;
+  verseNotes: VerseNote[];
 }) {
   const [step, setStep] = useState<StepKey>(initialStep);
   const [noteCount, setNoteCount] = useState(initialNoteCount);
@@ -78,6 +90,11 @@ export function Workspace({
   const textRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
   const [highlights, setHighlights] = useState<ChapterHighlights>(initialHighlights);
+  const [verseNotes, setVerseNotes] = useState<VerseNote[]>(initialVerseNotes);
+  const noted = useMemo(() => notedVerses(verseNotes), [verseNotes]);
+  const notedText = useMemo(() => notedPhrases(verseNotes), [verseNotes]);
+  const [notesFocus, setNotesFocus] = useState<{ verse: number; at: number } | null>(null);
+  const [activeNote, setActiveNote] = useState<number | null>(null);
   // Optimistic: colour the verses now, then save; if saving fails, put back what was there.
   const highlight = (verses: number[], color: HighlightColor | null) => {
     const before = highlights;
@@ -166,6 +183,13 @@ export function Workspace({
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
   };
 
+  /** A Note chip in the text: open that verse's notes in the notes list (phone: in the sheet). */
+  const openNotes = (verse: number) => {
+    setNotesFocus({ verse, at: Date.now() });
+    setActiveNote(verseNotes.find((n) => n.verse === verse)?.id ?? null);
+    if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
+  };
+
   const selectWord = (w: GreekWord) => {
     setCommentVerse(null);
     setWord(w);
@@ -190,7 +214,8 @@ export function Workspace({
         viewer={viewer}
       />
 
-      <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[280px_minmax(0,1fr)_340px]">
+      {/* Full width: the method sits against the left edge and the notes against the right, the text between. */}
+      <div className={`grid ${SHOW_MARGIN ? "mx-auto max-w-[1500px] lg:grid-cols-[280px_minmax(0,1fr)_340px]" : step === "read" ? "lg:grid-cols-[240px_minmax(0,1fr)_300px] xl:grid-cols-[264px_minmax(0,1fr)_360px]" : "lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[264px_minmax(0,1fr)]"}`}>
         <MethodNav
           step={step}
           onStep={changeStep}
@@ -218,10 +243,22 @@ export function Workspace({
                 <ProvenanceToggle on={layer} onToggle={() => setLayer(!layer)} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />
               </div>
               {!prefs.greek && (
-                <p className="eyebrow mt-4 !text-[0.65rem] text-muted">Tap a verse number for commentators and Church Fathers · Select any phrase to ask</p>
+                <p className="eyebrow mt-4 !text-[0.65rem] text-muted">
+                  {SHOW_MARGIN ? "Tap a verse number for commentators and Church Fathers · Select any phrase to ask" : "Select any words to highlight them or add a note"}
+                </p>
               )}
-              <div className="mt-8" ref={textRef}>
-                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} />
+              {/* Clicking the words of a note opens it beside the text. */}
+              <div
+                className="mt-8"
+                ref={textRef}
+                onClick={(e) => {
+                  const words = (e.target as HTMLElement).closest<HTMLElement>("[data-noted]");
+                  const verse = Number(words?.closest("[id^='v']")?.id.slice(1));
+                  const note = words && verseNotes.find((n) => n.verse === verse && quotedPhrase(n.doc, n.body) === words.dataset.noted);
+                  if (note) setActiveNote(note.id);
+                }}
+              >
+                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={SHOW_MARGIN ? selectVerse : undefined} onOpenNotes={openNotes} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} noted={noted} notedText={notedText} />
                 <LicensedNotices codes={shownVersions} texts={licensed.texts} />
               </div>
               <SelectionPopover
@@ -231,6 +268,11 @@ export function Workspace({
                 onAskVerse={(ref) => openAsk("ask", `What does ${ref} mean in this passage?`)}
                 highlights={highlights}
                 onHighlight={highlight}
+                onNoteSaved={(n) => {
+                  setVerseNotes((all) => [...all, n]);
+                  setActiveNote(n.id);
+                }}
+                askEnabled={SHOW_MARGIN}
               />
             </>
           ) : step === "observe" ? (
@@ -271,16 +313,53 @@ export function Workspace({
         </main>
 
         {/* Margin: one instance. Desktop = right column; phone = bottom sheet. */}
-        <aside
-          className={`border-rule lg:block lg:border-l lg:px-8 lg:py-12 ${
-            sheet ? "fixed inset-x-0 bottom-0 z-50 block max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-paper px-5 pb-10 pt-4 shadow-2xl lg:static lg:max-h-none lg:rounded-none lg:shadow-none" : "hidden"
-          }`}
-        >
-          <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-rule lg:hidden" />
-          <div className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:pb-8">
-            <Margin step={step} prefs={prefs} word={word} onCloseWord={() => setWord(null)} tab={tab} setTab={setTab} askRequest={askRequest} letters={letters} commentVerse={step === "read" ? commentVerse : null} onCloseVerse={() => setCommentVerse(null)} />
-          </div>
-        </aside>
+        {SHOW_MARGIN ? (
+          <aside
+            className={`border-rule lg:block lg:border-l lg:px-8 lg:py-12 ${
+              sheet ? "fixed inset-x-0 bottom-0 z-50 block max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-paper px-5 pb-10 pt-4 shadow-2xl lg:static lg:max-h-none lg:rounded-none lg:shadow-none" : "hidden"
+            }`}
+          >
+            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-rule lg:hidden" />
+            <div className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:pb-8">
+              <Margin step={step} prefs={prefs} word={word} onCloseWord={() => setWord(null)} tab={tab} setTab={setTab} askRequest={askRequest} letters={letters} commentVerse={step === "read" ? commentVerse : null} onCloseVerse={() => setCommentVerse(null)} verseNotes={verseNotes} />
+            </div>
+          </aside>
+        ) : (
+          <>
+            {/* Desktop, Read step: notes beside the text, level with the words they're about. */}
+            {step === "read" && (
+              <aside className="hidden border-l border-rule lg:block">
+                <SideTabs count={verseNotes.length} />
+                <div className="px-4 pb-12 pt-6 xl:px-5">
+                  {verseNotes.length ? (
+                    <NotesRail
+                      notes={verseNotes}
+                      passage={`${data.book.name} ${data.chapter}`}
+                      textRef={textRef}
+                      active={activeNote}
+                      onActivate={setActiveNote}
+                      onChange={(note) => setVerseNotes((all) => all.map((n) => (n.id === note.id ? note : n)))}
+                      onDeleted={(id) => {
+                        setVerseNotes((all) => all.filter((n) => n.id !== id));
+                        setActiveNote(null);
+                        setNoteCount((c) => Math.max(0, c - 1));
+                      }}
+                    />
+                  ) : (
+                    <p className="text-sm leading-relaxed text-muted">Select any words in the text and choose “Add note”. Your notes appear here, beside the words.</p>
+                  )}
+                </div>
+              </aside>
+            )}
+            {/* Phone: the notes list as a bottom sheet. */}
+            {sheet && (
+            <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-3xl bg-paper px-5 pb-10 pt-4 shadow-2xl lg:hidden">
+              <div className="mx-auto mb-5 h-1 w-10 shrink-0 rounded-full bg-rule" />
+              <ChapterNotes notes={verseNotes} chapter={data.chapter} focus={notesFocus} onGo={() => { setSheet(false); if (step !== "read") changeStep("read"); }} />
+            </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Phone: margin button + backdrop for the sheet */}
@@ -288,7 +367,11 @@ export function Workspace({
         onClick={() => setSheet(true)}
         className="fixed bottom-6 right-5 z-30 flex items-center gap-3 rounded-full bg-ink px-5 py-3 text-paper shadow-lg lg:hidden"
       >
-        <span className="font-mono text-xs text-paper/60">{word ? "Word" : letters.length ? `a–${letters[letters.length - 1].letter}` : "Ask"}</span> Margin
+        {SHOW_MARGIN ? (
+          <><span className="font-mono text-xs text-paper/60">{word ? "Word" : letters.length ? `a–${letters[letters.length - 1].letter}` : "Ask"}</span> Margin</>
+        ) : (
+          <><span className="font-mono text-xs text-paper/60">{verseNotes.length}</span> Notes</>
+        )}
       </button>
       {sheet && <div className="fixed inset-0 z-40 bg-ink/30 lg:hidden" onClick={() => setSheet(false)} />}
 
@@ -298,3 +381,28 @@ export function Workspace({
   );
 }
 
+
+/**
+ * The top of the right column: Notes now; Ask and Margin (commentators, lexicon, sources) are on their way back here.
+ * Sticks under the top bar so it stays in reach while the notes scroll with the text.
+ */
+function SideTabs({ count }: { count: number }) {
+  const soon = ["Ask", "Margin"];
+  return (
+    <div className="sticky top-16 z-20 border-b border-rule bg-paper/95 px-4 py-3 backdrop-blur xl:px-5">
+      <div className="flex gap-1 rounded-full bg-paper-2 p-1" role="tablist" aria-label="Side panel">
+        <button type="button" role="tab" aria-selected className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm shadow-sm">
+          Notes
+          {count > 0 && <span className="font-mono text-[0.68rem] text-muted">{count}</span>}
+        </button>
+        {soon.map((t) => (
+          <button key={t} type="button" role="tab" aria-selected={false} aria-disabled title={`${t} is coming soon`}
+            className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted/70">
+            {t}
+            <span className="rounded-full bg-paper px-1.5 py-px font-mono text-[0.55rem] uppercase tracking-wider text-muted">Soon</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}

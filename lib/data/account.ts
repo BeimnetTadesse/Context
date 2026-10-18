@@ -2,6 +2,7 @@ import "server-only";
 import { sql } from "@/lib/db";
 import type { HighlightColor } from "@/lib/highlights";
 import type { Label } from "@/lib/labels";
+import type { NoteDoc } from "@/lib/notes/doc";
 
 // Everything one reader has saved: for the profile page, the notebook, and "download my data".
 
@@ -13,7 +14,7 @@ export async function getAccount(userId: number) {
     guesses: number; correct: number; questions: number;
   }[]>`
     select u.created_at, u.last_sign_in,
-      (select count(*)::int from notes where user_id = u.id and kind = 'note') as notes,
+      (select count(*)::int from notes where user_id = u.id and kind = 'note' and parent_id is null) as notes,
       (select count(*)::int from notes where user_id = u.id and kind = any(${REFLECTION_KINDS})) as reflections,
       (select count(*)::int from highlights where user_id = u.id) as highlights,
       (select count(*)::int from assumption_guesses where user_id = u.id) as guesses,
@@ -24,7 +25,9 @@ export async function getAccount(userId: number) {
 }
 
 export type NoteItem = {
-  id: number; kind: string; body: string; created_at: Date; book: string; slug: string; chapter: number;
+  id: number; kind: string; body: string; doc: NoteDoc | null; version: string | null; created_at: Date;
+  /** Replies the reader wrote to this note, oldest first. */
+  replies: { id: number; body: string; doc: NoteDoc | null; created_at: string }[]; book: string; slug: string; chapter: number;
   verse: number | null; prompt: string | null;
 };
 export type HighlightItem = { ord: number; color: HighlightColor; created_at: Date; book: string; slug: string; chapter: number; verse: number; text: string };
@@ -33,10 +36,12 @@ export type GuessItem = { item_id: number; guess: Label; expected: Label; correc
 export async function getNotebook(userId: number) {
   const [notes, highlights, guesses] = await Promise.all([
     sql<NoteItem[]>`
-      select n.id, n.kind, n.body, n.created_at, b.name as book, b.slug, n.chapter, v.verse, r.text as prompt
+      select n.id, n.kind, n.body, n.doc, n.version, n.created_at, b.name as book, b.slug, n.chapter, v.verse, r.text as prompt,
+        coalesce((select json_agg(json_build_object('id', x.id, 'body', x.body, 'doc', x.doc, 'created_at', x.created_at) order by x.created_at)
+                  from notes x where x.parent_id = n.id), '[]') as replies
       from notes n join books b on b.id = n.book_id
       left join verses v on v.ord = n.start_ord left join reflection_items r on r.id = n.item_id
-      where n.user_id = ${userId} and n.kind <> 'text_issue'
+      where n.user_id = ${userId} and n.kind <> 'text_issue' and n.parent_id is null
       order by b.id, n.chapter, v.verse nulls first, n.created_at`,
     sql<HighlightItem[]>`
       select h.ord, h.color, h.created_at, b.name as book, b.slug, v.chapter, v.verse, t.text

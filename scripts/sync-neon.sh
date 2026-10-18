@@ -44,9 +44,9 @@ echo "4/5 restoring live user data…"
 \\copy users from '$TMP/users.csv' csv header
 create temp table n (like notes);
 \\copy n from '$TMP/notes.csv' csv header
-insert into notes (id, user_id, book_id, chapter, start_ord, end_ord, kind, item_id, body, created_at, doc, updated_at)
+insert into notes (id, user_id, book_id, chapter, start_ord, end_ord, kind, item_id, body, created_at, doc, updated_at, parent_id, version)
   select id, user_id, book_id, chapter, start_ord, end_ord, kind,
-  case when item_id in (select id from reflection_items) then item_id end, body, created_at, doc, updated_at from n;
+  case when item_id in (select id from reflection_items) then item_id end, body, created_at, doc, updated_at, parent_id, version from n;
 \\copy highlights from '$TMP/highlights.csv' csv header
 create temp table g (like assumption_guesses);
 \\copy g from '$TMP/assumption_guesses.csv' csv header

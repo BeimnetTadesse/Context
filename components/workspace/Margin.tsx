@@ -9,6 +9,7 @@ import type { GreekWord } from "@/lib/data/chapter";
 import type { ClaimView } from "@/lib/data/study";
 import type { StepKey } from "@/lib/steps";
 import { AskPanel, type AskRequest } from "./AskPanel";
+import { VerseNotes, type VerseNote } from "@/components/notes/VerseNotes";
 import { AMHARIC_1962_NOTICE } from "@/lib/notices";
 import { isLicensedVersion, versionInfo, type ReadPrefs } from "@/lib/versions";
 
@@ -159,6 +160,7 @@ export function Margin({
   letters,
   commentVerse = null,
   onCloseVerse,
+  verseNotes = [],
 }: {
   step: StepKey;
   prefs: ReadPrefs;
@@ -170,8 +172,9 @@ export function Margin({
   letters: (ClaimView & { letter: string })[];
   commentVerse?: number | null;
   onCloseVerse?: () => void;
+  verseNotes?: VerseNote[];
 }) {
-  const { study } = useStudy();
+  const { study, chapter } = useStudy();
 
   // "Cited in this step": the translation(s) on screen, plus every source behind the claims this step shows.
   const stepClaims = step === "read" ? letters : study.claims.filter((c) => c.step === step || (step === "context" && c.step === "book"));
@@ -196,6 +199,7 @@ export function Margin({
       </div>
 
       <div hidden={tab !== "margin"} className="space-y-8">
+        {commentVerse !== null && <VerseNotes verse={commentVerse} chapter={chapter} notes={verseNotes.filter((n) => n.verse === commentVerse)} />}
         {commentVerse !== null && <VerseCommentary key={commentVerse} verse={commentVerse} onClose={() => onCloseVerse?.()} />}
         {word && <LexiconCard key={`${word.strongs}-${word.surface}`} word={word} onClose={onCloseWord} />}
         {step === "read" && !word && commentVerse === null && (
