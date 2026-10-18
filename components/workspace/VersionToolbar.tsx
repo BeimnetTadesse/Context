@@ -1,6 +1,7 @@
 "use client";
 
 import { VERSIONS, isEthiopic, versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
+import { VersionSelect } from "./VersionSelect";
 
 /** Choose the main version, up to two to compare, or the Greek interlinear. */
 export function VersionToolbar({ prefs, onChange }: { prefs: ReadPrefs; onChange: (p: ReadPrefs) => void }) {
@@ -13,23 +14,13 @@ export function VersionToolbar({ prefs, onChange }: { prefs: ReadPrefs; onChange
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm text-muted">
-          Version
-          <select
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <span id="main-version-label">Version</span>
+          <VersionSelect
             value={prefs.primary}
-            onChange={(e) => {
-              const primary = e.target.value as VersionCode;
-              onChange({ primary, compare: prefs.compare.filter((c) => c !== primary), greek: false });
-            }}
-            className={`rounded-full border border-rule bg-card px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none ${isEthiopic(prefs.primary) ? "font-ethiopic" : ""}`}
-          >
-            {VERSIONS.map((v) => (
-              <option key={v.code} value={v.code}>
-                {v.short === v.code ? `${v.code} — ${v.name}` : `${v.short} — ${v.name}`}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={(primary) => onChange({ primary, compare: prefs.compare.filter((c) => c !== primary), greek: false })}
+          />
+        </div>
         <button
           onClick={() => onChange({ ...prefs, greek: !prefs.greek, compare: prefs.greek ? prefs.compare : [] })}
           aria-pressed={prefs.greek}
