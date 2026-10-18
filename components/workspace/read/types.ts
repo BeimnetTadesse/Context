@@ -20,4 +20,5 @@ export interface ReadViewProps {
   noted: Record<number, number>;
   /** The phrases those notes were written on: verse → phrases. */
   notedText: Record<number, string[]>;
+  onOpenNotes?: (v: number) => void;
 }

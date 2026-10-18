@@ -38,11 +38,14 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
         sql<{ id: number; kind: string; item_id: number | null; body: string }[]>`
           select id, kind, item_id, body from notes
           where user_id = ${userId} and book_id = ${data.book.id} and chapter = ${data.chapter} order by created_at desc`,
-        sql<{ n: number }[]>`select count(*)::int as n from notes where user_id = ${userId} and kind <> 'text_issue'`,
+        sql<{ n: number }[]>`select count(*)::int as n from notes where user_id = ${userId} and kind <> 'text_issue' and parent_id is null`,
         chapterHighlights(userId, data.book.id, data.chapter),
         sql<VerseNote[]>`
-          select n.id, v.verse, n.doc, n.body from notes n join verses v on v.ord = n.start_ord
-          where n.user_id = ${userId} and n.book_id = ${data.book.id} and n.chapter = ${data.chapter} and n.kind = 'note'
+          select n.id, v.verse, n.doc, n.body, n.version, n.created_at as "createdAt",
+            coalesce((select json_agg(json_build_object('id', r.id, 'doc', r.doc, 'body', r.body, 'createdAt', r.created_at) order by r.created_at)
+                      from notes r where r.parent_id = n.id), '[]') as replies
+          from notes n join verses v on v.ord = n.start_ord
+          where n.user_id = ${userId} and n.book_id = ${data.book.id} and n.chapter = ${data.chapter} and n.kind = 'note' and n.parent_id is null
           order by v.verse, n.created_at`,
       ])
     : [[], [], [{ n: 0 }], {}, []];
@@ -61,7 +64,7 @@ export default async function StudyPage(props: PageProps<"/study/[book]/[chapter
       viewer={{ signedIn: viewer.signedIn, name: viewer.name, image: viewer.image }}
       aiLocked={authConfigured() && !viewer.signedIn}
       initialHighlights={highlights}
-      verseNotes={[...verseNotes]}
+      verseNotes={verseNotes.map((n) => ({ ...n, createdAt: new Date(n.createdAt).toISOString() }))}
     />
   );
 }

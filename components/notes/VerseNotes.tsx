@@ -2,11 +2,24 @@ import { quotedPhrase, type NoteDoc } from "@/lib/notes/doc";
 import { NoteView } from "./NoteView";
 
 /** A reader's note on a verse of the chapter they're reading (kind "note", anchored by its first verse). */
+export interface NoteReply {
+  id: number;
+  doc: NoteDoc | null;
+  body: string;
+  /** ISO time. */
+  createdAt: string;
+}
+
 export interface VerseNote {
   id: number;
   verse: number;
   doc: NoteDoc | null;
   body: string;
+  /** The translation it was written on (e.g. "KJV"); null for older notes. */
+  version: string | null;
+  /** ISO time. */
+  createdAt: string;
+  replies: NoteReply[];
 }
 
 /** Notes per verse, for the marker beside each verse number. */

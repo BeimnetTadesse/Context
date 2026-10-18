@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { postJson, useStudy } from "@/components/study/context";
 import { HIGHLIGHTS, type ChapterHighlights, type HighlightColor } from "@/lib/highlights";
-import { isEmptyDoc, withQuote, type NoteDoc } from "@/lib/notes/doc";
+import { docToText, isEmptyDoc, withQuote, type NoteDoc } from "@/lib/notes/doc";
 import type { VerseNote } from "@/components/notes/VerseNotes";
 
 // Loaded only when a reader chooses "Add note".
@@ -20,6 +20,8 @@ interface Sel {
   verses: number[];
   /** Licensed version the selection touches (e.g. "NASV"): only the verse reference may leave the page. */
   licensed: string | null;
+  /** The translation the words were selected in (e.g. "KJV"). */
+  version: string | null;
   /** The selected text, kept so the popover can follow it when the page scrolls. */
   range: Range;
   box: Box;
@@ -37,6 +39,29 @@ const measure = (range: Range): Box => {
 };
 
 /**
+ * The verse words a double-click in the space around them belongs to: the verse it's in, and, side by side, the
+ * version column under the pointer (or the nearest one).
+ */
+function verseTextNear(target: HTMLElement, x: number): HTMLElement | null {
+  const own = target.closest?.<HTMLElement>("[data-version]");
+  if (own?.querySelector("[data-verse-text]") && !own.querySelector("[id^='v'] [data-version]")) {
+    // Inside one column: in compare view that column is this verse; in flowing text, use the verse clicked in.
+    const verse = target.closest<HTMLElement>("[id^='v']");
+    if (verse && own.contains(verse)) return verse.querySelector<HTMLElement>("[data-verse-text]");
+    // Compare view: the column is one verse. Flowing text between verses (a paragraph gap): leave it to the browser.
+    return target.closest("[id^='v']") ? own.querySelector<HTMLElement>("[data-verse-text]") : null;
+  }
+  const row = target.closest?.<HTMLElement>("[id^='v']");
+  const cells = row ? [...row.querySelectorAll<HTMLElement>("[data-version]")].filter((c) => c.querySelector("[data-verse-text]")) : [];
+  const distance = (c: HTMLElement) => {
+    const r = c.getBoundingClientRect();
+    return x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+  };
+  const cell = cells.sort((a, b) => distance(a) - distance(b))[0];
+  return cell?.querySelector<HTMLElement>("[data-verse-text]") ?? row?.querySelector<HTMLElement>("[data-verse-text]") ?? null;
+}
+
+/**
  * Select any phrase in Read → highlight the verse(s) · Text or Assumption? · Ask · Add note. In licensed text (NIV, NASV…) the wording is
  * never sent anywhere: Ask asks about the verse by reference, and the note is saved without a quote.
  */
@@ -48,6 +73,7 @@ export function SelectionPopover({
   highlights,
   onHighlight,
   onNoteSaved,
+  askEnabled = true,
 }: {
   container: React.RefObject<HTMLElement | null>;
   onCheck: (text: string) => void;
@@ -59,6 +85,8 @@ export function SelectionPopover({
   onHighlight: (verses: number[], color: HighlightColor | null) => void;
   /** A note was saved on this verse: show its marker straight away. */
   onNoteSaved: (note: VerseNote) => void;
+  /** Ask and Text or Assumption? open in the margin; off while it's hidden. */
+  askEnabled?: boolean;
 }) {
   const { book, chapter, setNoteCount } = useStudy();
   const [sel, setSel] = useState<Sel | null>(null);
@@ -69,12 +97,34 @@ export function SelectionPopover({
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    const onUp = () => {
+    const onUp = (e?: Event) => {
       const s = window.getSelection();
-      const text = s?.toString().trim() ?? "";
-      if (!s || s.rangeCount === 0 || text.length < 3 || text.length > 400) return;
+      if (!s) return;
+      // Double- or triple-click in a verse: select exactly that verse's words in that version, instead of the
+      // browser's word or paragraph (which runs on into Note chips, labels and other verses).
+      if (e instanceof MouseEvent && e.detail >= 2) {
+        const target = e.target as HTMLElement;
+        const verse = target.closest?.<HTMLElement>("[data-verse-text]") ?? verseTextNear(target, e.clientX);
+        if (verse && container.current?.contains(verse)) {
+          const whole = document.createRange();
+          whole.selectNodeContents(verse);
+          s.removeAllRanges();
+          s.addRange(whole);
+        }
+      }
+      if (s.rangeCount === 0) return;
       const range = s.getRangeAt(0);
       if (!container.current?.contains(range.commonAncestorContainer)) return;
+      // A note is on one version's words: a drag that runs on into the next column stops at the end of this one.
+      const versionAt = (node: Node) => (node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement) : node.parentElement)?.closest<HTMLElement>("[data-version]");
+      const column = versionAt(range.startContainer);
+      const words = range.cloneRange();
+      if (column && !column.contains(range.endContainer)) words.setEnd(column, column.childNodes.length);
+      // The words only: not verse numbers or margin letters (<sup>), Note chips and other buttons, or column labels.
+      const copy = words.cloneContents();
+      copy.querySelectorAll("sup, button, [data-noquote]").forEach((el) => el.remove());
+      const text = (copy.textContent ?? "").replace(/\s+/g, " ").trim();
+      if (text.length < 3 || text.length > 400) return;
       const verseAt = (node: Node) => {
         const el = (node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement) : node.parentElement)?.closest("[id^='v']");
         return el ? Number(el.id.slice(1)) || null : null;
@@ -83,7 +133,13 @@ export function SelectionPopover({
       const last = verseAt(range.endContainer) ?? verse;
       const verses = verse && last ? Array.from({ length: Math.max(0, last - verse) + 1 }, (_, i) => verse + i) : [];
       const touched = [...container.current.querySelectorAll<HTMLElement>("[data-licensed]")].find((n) => range.intersectsNode(n));
-      setSel({ text, verse, verses, licensed: touched?.dataset.licensed ?? null, range: range.cloneRange(), box: measure(range) });
+      // Which translation: the column the selection starts in, else where it ends, else the first column it touches.
+      const version =
+        column?.dataset.version ??
+        versionAt(range.endContainer)?.dataset.version ??
+        [...container.current.querySelectorAll<HTMLElement>("[data-version]")].find((n) => range.intersectsNode(n))?.dataset.version ??
+        null;
+      setSel({ text, verse, verses, licensed: touched?.dataset.licensed ?? null, version, range: range.cloneRange(), box: measure(range) });
       setNoting(false);
       setNote(null);
       setSaved(false);
@@ -138,9 +194,9 @@ export function SelectionPopover({
     setSaving(true);
     try {
       const doc = withQuote(quote, note);
-      const r = await postJson<{ id: number; count: number }>("/api/notes", { book: book.slug, chapter, kind: "note", verse: sel.verse, doc });
+      const r = await postJson<{ id: number; count: number }>("/api/notes", { book: book.slug, chapter, kind: "note", verse: sel.verse, version: sel.version, doc });
       setNoteCount(r.count);
-      if (sel.verse) onNoteSaved({ id: r.id, verse: sel.verse, doc, body: "" });
+      if (sel.verse) onNoteSaved({ id: r.id, verse: sel.verse, doc, body: docToText(doc), version: sel.version, createdAt: new Date().toISOString(), replies: [] });
       setSaved(true);
       setTimeout(close, 900);
     } catch {
@@ -162,7 +218,7 @@ export function SelectionPopover({
       {noting ? (
         <div className="w-[26rem] max-w-[calc(100vw-2rem)] p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="eyebrow !text-[0.62rem] text-muted">Note · {ref}</p>
+            <p className="eyebrow !text-[0.62rem] text-muted">Note · {ref}{sel.version ? ` · ${sel.version}` : ""}</p>
             <button type="button" onClick={close} aria-label="Close" className="grid h-6 w-6 place-items-center rounded-md text-muted hover:bg-paper-2 hover:text-ink">✕</button>
           </div>
           <p className="mb-3 line-clamp-2 border-l-2 border-[var(--l-personal)]/50 pl-3 font-serif text-[0.98rem] italic leading-snug text-ink-2">{quote}</p>
@@ -206,7 +262,7 @@ export function SelectionPopover({
             </div>
           )}
           <div className="flex">
-          {sel.licensed ? (
+          {!askEnabled ? null : sel.licensed ? (
             <button onClick={() => { onAskVerse(ref); close(); }} className="rounded-lg px-3 py-2 hover:bg-paper-2">Ask about {sel.verse ? `verse ${sel.verse}` : "this"}</button>
           ) : (
             <>

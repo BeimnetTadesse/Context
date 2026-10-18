@@ -24,6 +24,8 @@ export interface NoteEditorProps {
   autoFocus?: boolean;
   /** "dark" inside the reading popover, "light" on paper (the notebook). */
   tone?: "dark" | "light";
+  /** A one-line box (replies): smaller, and the formatting bar only shows while typing. */
+  compact?: boolean;
 }
 
 const icon = (path: ReactNode) => (
@@ -53,6 +55,7 @@ export default function NoteEditor({
   placeholder = "Your note…",
   autoFocus = false,
   tone = "light",
+  compact = false,
 }: NoteEditorProps) {
   // The keyboard shortcuts are registered once; refs keep them calling the latest handlers.
   const submit = useRef(onSubmit);
@@ -86,7 +89,12 @@ export default function NoteEditor({
       }),
     ],
     editorProps: {
-      attributes: { class: "max-h-64 min-h-[5.5rem] overflow-y-auto px-3.5 py-3 font-serif text-[1.08rem] leading-relaxed", "aria-label": placeholder },
+      attributes: {
+        class: compact
+          ? "max-h-48 min-h-[2.4rem] overflow-y-auto px-3 py-2 font-serif text-[0.98rem] leading-relaxed"
+          : "max-h-64 min-h-[5.5rem] overflow-y-auto px-3.5 py-3 font-serif text-[1.08rem] leading-relaxed",
+        "aria-label": placeholder,
+      },
       // Paste as plain text: no outside formatting, and nothing the schema would have to reject. One paragraph per line.
       handlePaste: (view, event) => {
         const text = event.clipboardData?.getData("text/plain");
@@ -107,11 +115,12 @@ export default function NoteEditor({
 
   const dark = tone === "dark";
   return (
-    <div className={`note-prose overflow-hidden rounded-xl ${dark ? "bg-paper/[0.07] text-paper ring-1 ring-paper/10 focus-within:ring-paper/30" : "border border-rule bg-paper/60 text-ink focus-within:border-ink-2"}`}>
+    <div className={`group note-prose overflow-hidden rounded-xl ${dark ? "bg-paper/[0.07] text-paper ring-1 ring-paper/10 focus-within:ring-paper/30" : "border border-rule bg-paper/60 text-ink focus-within:border-ink-2"}`}>
       <EditorContent editor={editor} />
-      <div className={`flex items-center gap-2 border-t px-1.5 py-1.5 ${dark ? "border-paper/10" : "border-rule"}`}>
+      <div className={`items-center gap-2 border-t px-1.5 py-1.5 ${compact ? "hidden group-focus-within:flex" : "flex"} ${dark ? "border-paper/10" : "border-rule"}`}>
         <div className="flex items-center gap-0.5" role="toolbar" aria-label="Formatting">
-          {TOOLS.map((t) => (
+          {/* The compact box keeps only B and I; lists and quotes still come from typing "- ", "1. " or "> ". */}
+          {TOOLS.filter((t) => !compact || t.key === "bold" || t.key === "italic").map((t) => (
             <button
               key={t.key}
               type="button"
@@ -131,7 +140,10 @@ export default function NoteEditor({
             </button>
           ))}
         </div>
-        {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
+        {actions && (
+          // Keep the editor focused while pressing these, so a compact box doesn't fold away mid-click.
+          <div className="ml-auto flex items-center gap-2" onMouseDown={(e) => e.preventDefault()}>{actions}</div>
+        )}
       </div>
     </div>
   );

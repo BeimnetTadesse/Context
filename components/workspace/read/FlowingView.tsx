@@ -1,10 +1,10 @@
 import { isEthiopic, isLicensedVersion, versionInfo, type VersionCode } from "@/lib/versions";
-import { guard, Highlight, Marked, Moved, NoteChip, Omitted, Restored, Vn } from "./marks";
+import { guard, Highlight, Marked, Moved, NoteChip, Noted, Omitted, Restored, Vn } from "./marks";
 import { coveredBy, paragraphs, spanEnd, textOf } from "./text";
 import type { ReadViewProps } from "./types";
 
 /** Flowing text in one version, in the translation's own paragraphs. */
-export function FlowingView({ verses, code, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText }: ReadViewProps & { code: VersionCode }) {
+export function FlowingView({ verses, code, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes }: ReadViewProps & { code: VersionCode }) {
   const amh = code === "AMH";
   const ethiopic = isEthiopic(code);
   if (isLicensedVersion(code) && !licensed[code])
@@ -16,6 +16,7 @@ export function FlowingView({ verses, code, licensed, licensedFailed, markFor, t
   return (
     <div
       className={`scripture ${ethiopic ? "ethiopic" : ""}`}
+      data-version={code}
       {...(isLicensedVersion(code) ? { ...guard, "data-licensed": code } : {})}
     >
       {paragraphs(verses).map((para) => (
@@ -56,8 +57,8 @@ export function FlowingView({ verses, code, licensed, licensedFailed, markFor, t
               <span key={v.ord} id={`v${v.verse}`} className="scroll-mt-28">
                 <Vn n={v.verse} end={spanEnd(v, code, licensed)} onVerse={amh ? undefined : onVerse} active={activeVerse === v.verse} />
                 {amh && v.amh?.restored && <Restored />}
-                <Highlight color={highlights[v.verse]}>{ethiopic ? text : <Marked text={text} marks={markFor(v, code)} trail={trail} noted={notedText[v.verse]} />}</Highlight>
-                <NoteChip verse={v.verse} count={noted[v.verse]} onOpen={onVerse} />{" "}
+                <Highlight color={highlights[v.verse]}>{ethiopic ? <Noted text={text} noted={notedText[v.verse]} /> : <Marked text={text} marks={markFor(v, code)} trail={trail} noted={notedText[v.verse]} />}</Highlight>
+                <NoteChip verse={v.verse} count={noted[v.verse]} onOpen={onOpenNotes ?? onVerse} besideText={!!onOpenNotes} />{" "}
               </span>
             );
           })}

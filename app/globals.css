@@ -109,3 +109,6 @@ sup.vn {
   pointer-events: none;
   opacity: 0.5;
 }
+
+/* The words of the note open beside the text. */
+[data-noted].note-active { background-color: #e2d8c9; }

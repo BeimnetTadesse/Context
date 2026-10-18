@@ -1,7 +1,8 @@
+import type { ReactNode } from "react";
 import { STEPS, type StepKey } from "@/lib/steps";
 import { versionInfo, type ReadPrefs } from "@/lib/versions";
 
-/** Desktop left column: the seven steps, and the passage being read. */
+/** Desktop left column: the seven steps, the passage being read, and (children) the reader's notes. */
 export function MethodNav({
   step,
   onStep,
@@ -11,6 +12,7 @@ export function MethodNav({
   last,
   verseCount,
   prefs,
+  children,
 }: {
   step: StepKey;
   onStep: (s: StepKey) => void;
@@ -20,10 +22,11 @@ export function MethodNav({
   last: number;
   verseCount: number;
   prefs: ReadPrefs;
+  children?: ReactNode;
 }) {
   return (
-    <aside className="hidden px-6 py-12 lg:block">
-      <div className="sticky top-24">
+    <aside className="hidden py-12 pl-5 pr-4 lg:block xl:pl-6">
+      <div className="sticky top-24 flex max-h-[calc(100dvh-7rem)] flex-col">
         <p className="eyebrow mb-4 text-muted">Method</p>
         <nav className="space-y-1">
           {STEPS.map((s) => {
@@ -61,6 +64,8 @@ export function MethodNav({
           </p>
           <p className="mt-1.5 font-mono text-[0.68rem] text-muted">⌘K go to · 1–7 steps</p>
         </div>
+
+        {children && <div className="mt-4 flex min-h-0 flex-1 flex-col border-t border-rule pt-4">{children}</div>}
       </div>
     </aside>
   );

@@ -1,5 +1,6 @@
 // Small pieces of the reading view: verse numbers, provenance underlines, word differences, and the notes shown
 // where a version has no text for a verse.
+import { Fragment } from "react";
 import { sharedWords } from "@/lib/diff";
 import { HIGHLIGHTS, type HighlightColor } from "@/lib/highlights";
 import type { Label } from "@/lib/labels";
@@ -15,21 +16,63 @@ interface Range {
   start: number;
   end: number;
   mark?: PhraseMark;
-  note?: boolean;
 }
 
-/** Split a verse into plain text, provenance underlines (with a margin letter) and word-trail highlights. */
+interface NoteRange {
+  start: number;
+  end: number;
+  quote: string;
+}
+
+/** Where the reader's noted phrases fall in this version's text (only where the exact words appear). */
+function noteRanges(text: string, noted: string[]): NoteRange[] {
+  const out: NoteRange[] = [];
+  for (const quote of noted) {
+    const start = text.indexOf(quote);
+    if (start >= 0) out.push({ start, end: start + quote.length, quote });
+  }
+  return out.sort((a, b) => a.start - b.start).filter((r, i, all) => i === 0 || r.start >= all[i - 1].end);
+}
+
+/**
+ * One stretch of a verse (text[from, from + piece.length)) with the noted phrases inside it tinted. Notes are their
+ * own layer, so they show inside provenance underlines and word differences instead of competing with them.
+ */
+function withNotes(piece: string, from: number, notes: NoteRange[], key: string | number = 0): React.ReactNode {
+  if (!notes.length) return piece;
+  const to = from + piece.length;
+  const out: React.ReactNode[] = [];
+  let pos = from;
+  for (const n of notes) {
+    if (n.end <= pos || n.start >= to) continue;
+    const a = Math.max(n.start, pos);
+    const b = Math.min(n.end, to);
+    if (a > pos) out.push(piece.slice(pos - from, a - from));
+    out.push(
+      <span key={`${key}-${a}`} data-noted={n.quote} title="You wrote a note on this"
+        className="cursor-pointer rounded-sm bg-[var(--l-personal-bg)] underline decoration-[var(--l-personal)] decoration-dotted decoration-2 underline-offset-[6px] transition-colors [box-decoration-break:clone]">
+        {piece.slice(a - from, b - from)}
+      </span>,
+    );
+    pos = b;
+  }
+  if (pos < to) out.push(piece.slice(pos - from));
+  return out.length === 1 ? out[0] : <Fragment key={key}>{out}</Fragment>;
+}
+
+/** A verse with only the reader's noted phrases marked (Amharic, and anywhere without other marks). */
+export function Noted({ text, noted = [] }: { text: string; noted?: string[] }) {
+  return <>{withNotes(text, 0, noteRanges(text, noted))}</>;
+}
+
+/** Split a verse into plain text, provenance underlines (with a margin letter), word-trail highlights and noted phrases. */
 export function Marked({ text, marks, trail, noted = [] }: { text: string; marks: PhraseMark[]; trail: string | null; noted?: string[] }) {
   const lower = text.toLowerCase();
+  const notes = noteRanges(text, noted);
   const ranges: Range[] = [];
   for (const m of marks) {
     const i = lower.indexOf(m.quote.toLowerCase());
     if (i >= 0) ranges.push({ start: i, end: i + m.quote.length, mark: m });
-  }
-  // Phrases the reader wrote a note on (only where the exact words are in this version).
-  for (const q of noted) {
-    const i = text.indexOf(q);
-    if (i >= 0) ranges.push({ start: i, end: i + q.length, note: true });
   }
   if (trail) {
     const re = new RegExp(`\\b${trail}\\w*`, "gi");
@@ -40,14 +83,10 @@ export function Marked({ text, marks, trail, noted = [] }: { text: string; marks
   let pos = 0;
   for (const r of ranges) {
     if (r.start < pos) continue; // overlapping: first wins
-    out.push(text.slice(pos, r.start));
-    const piece = text.slice(r.start, r.end);
+    out.push(withNotes(text.slice(pos, r.start), pos, notes, `p${pos}`));
+    const piece = withNotes(text.slice(r.start, r.end), r.start, notes, `m${r.start}`);
     out.push(
-      r.note ? (
-        <span key={r.start} title="You wrote a note on this" className="rounded-sm bg-[var(--l-personal-bg)] underline decoration-[var(--l-personal)] decoration-dotted decoration-2 underline-offset-[6px] [box-decoration-break:clone]">
-          {piece}
-        </span>
-      ) : r.mark ? (
+      r.mark ? (
         <span key={r.start}>
           <span
             className="underline decoration-2 underline-offset-[6px]"
@@ -63,7 +102,7 @@ export function Marked({ text, marks, trail, noted = [] }: { text: string; marks
     );
     pos = r.end;
   }
-  out.push(text.slice(pos));
+  out.push(withNotes(text.slice(pos), pos, notes, `p${pos}`));
   return <>{out}</>;
 }
 
@@ -88,7 +127,7 @@ export function Vn({ n, end, onVerse, active }: { n: number; end?: number | null
  * The reader has written on this verse: a small chip at the end of it that opens their notes in the margin.
  * Not selectable, so copying the text never picks it up.
  */
-export function NoteChip({ verse, count, onOpen }: { verse: number; count?: number; onOpen?: (v: number) => void }) {
+export function NoteChip({ verse, count, onOpen, besideText = false }: { verse: number; count?: number; onOpen?: (v: number) => void; besideText?: boolean }) {
   if (!count) return null;
   const label = count > 1 ? `${count} notes` : "Note";
   return (
@@ -97,7 +136,7 @@ export function NoteChip({ verse, count, onOpen }: { verse: number; count?: numb
       onClick={() => onOpen?.(verse)}
       disabled={!onOpen}
       title={`Your ${count > 1 ? `${count} notes` : "note"} on verse ${verse}`}
-      className="mx-1 inline-flex select-none items-center gap-1 rounded-full border border-[var(--l-personal)]/35 bg-[var(--l-personal-bg)] px-2 py-px align-[0.15em] font-sans text-[0.68rem] font-medium leading-4 text-ink-2 transition hover:border-[var(--l-personal)] hover:text-ink"
+      className={`mx-1 inline-flex select-none ${besideText ? "lg:hidden" : ""} items-center gap-1 rounded-full border border-[var(--l-personal)]/35 bg-[var(--l-personal-bg)] px-2 py-px align-[0.15em] font-sans text-[0.68rem] font-medium leading-4 text-ink-2 transition hover:border-[var(--l-personal)] hover:text-ink`}
     >
       <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden>
         <path d="M8.2 1.6 10.4 3.8 4.3 9.9 1.6 10.4 2.1 7.7z" />
@@ -153,26 +192,36 @@ export const guard = {
 };
 
 /** Compared column: words that differ from the main version are highlighted. */
-export function Diffed({ base, text }: { base: string | undefined; text: string }) {
-  if (!base) return <>{text}</>;
+export function Diffed({ base, text, noted = [] }: { base: string | undefined; text: string; noted?: string[] }) {
+  const notes = noteRanges(text, noted);
+  if (!base) return <>{withNotes(text, 0, notes)}</>;
+  // Each token's offset in the verse (the tokens are the whole text, in order).
+  const tokens = sharedWords(base, text);
+  const offsets = tokens.reduce<number[]>((acc, t, i) => [...acc, i ? acc[i - 1] + tokens[i - 1].token.length : 0], []);
   return (
     <>
-      {sharedWords(base, text).map((t, i) =>
-        t.shared ? t.token : (
+      {tokens.map((t, i) => {
+        const piece = withNotes(t.token, offsets[i], notes, i);
+        return t.shared ? (
+          <span key={i}>{piece}</span>
+        ) : (
           <span key={i} className="rounded-sm bg-[var(--l-scholarly-bg)] text-ink" title="Differs from your main version">
-            {t.token}
+            {piece}
           </span>
-        ),
-      )}
+        );
+      })}
     </>
   );
 }
 
-/** A reader's highlight behind a verse's words (wraps across lines like a highlighter). */
+/**
+ * A verse's words, with the reader's highlight behind them (wraps across lines like a highlighter).
+ * data-verse-text marks exactly the words, so a double-click can select the verse and nothing around it.
+ */
 export function Highlight({ color, children }: { color: HighlightColor | undefined; children: React.ReactNode }) {
-  if (!color) return <>{children}</>;
+  if (!color) return <span data-verse-text>{children}</span>;
   return (
-    <span className="rounded-sm px-0.5 [box-decoration-break:clone]" style={{ backgroundColor: HIGHLIGHTS[color].fill }}>
+    <span data-verse-text className="rounded-sm px-0.5 [box-decoration-break:clone]" style={{ backgroundColor: HIGHLIGHTS[color].fill }}>
       {children}
     </span>
   );

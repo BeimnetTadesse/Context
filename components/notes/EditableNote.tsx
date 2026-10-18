@@ -12,8 +12,26 @@ const NoteEditor = dynamic(() => import("./NoteEditor"), {
   loading: () => <div className="h-[8.5rem] rounded-xl border border-rule bg-card" />,
 });
 
-/** A note in the notebook: shown as saved, with Edit to change it in place. Old plain-text notes open as one paragraph per line. */
-export function EditableNote({ id, doc, body }: { id: number; doc: NoteDoc | null; body: string }) {
+/**
+ * A saved note with Edit to change it in place (the notebook, and the notes beside the text). Old plain-text notes open
+ * as one paragraph per line. onSaved lets a page update its own copy; without it the page's data is refreshed.
+ */
+export function EditableNote({
+  id,
+  doc,
+  body,
+  onSaved,
+  textClass = "text-[1.15rem]",
+  extraActions,
+}: {
+  id: number;
+  doc: NoteDoc | null;
+  body: string;
+  onSaved?: (doc: NoteDoc) => void;
+  textClass?: string;
+  /** More links beside Edit (e.g. Delete). */
+  extraActions?: React.ReactNode;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<NoteDoc | null>(null);
@@ -25,13 +43,16 @@ export function EditableNote({ id, doc, body }: { id: number; doc: NoteDoc | nul
     return (
       <div className="mt-2">
         {doc ? (
-          <NoteView doc={doc} className="font-serif text-[1.15rem] leading-relaxed" />
+          <NoteView doc={doc} className={`font-serif leading-relaxed ${textClass}`} />
         ) : (
-          <p className="whitespace-pre-wrap font-serif text-[1.15rem] leading-relaxed">{body}</p>
+          <p className={`whitespace-pre-wrap font-serif leading-relaxed ${textClass}`}>{body}</p>
         )}
-        <button type="button" onClick={() => { setDraft(shown); setEditing(true); }} className="mt-1 text-xs text-muted underline-offset-2 hover:text-accent hover:underline">
+        <div className="mt-1 flex gap-4">
+          <button type="button" onClick={() => { setDraft(shown); setEditing(true); }} className="text-xs text-muted underline-offset-2 hover:text-accent hover:underline">
           Edit
         </button>
+          {extraActions}
+        </div>
       </div>
     );
 
@@ -42,7 +63,8 @@ export function EditableNote({ id, doc, body }: { id: number; doc: NoteDoc | nul
     try {
       await postJson("/api/notes", { id, doc: draft }, "PATCH");
       setEditing(false);
-      router.refresh();
+      if (onSaved) onSaved(draft);
+      else router.refresh();
     } catch {
       setError(true);
     } finally {

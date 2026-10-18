@@ -1,10 +1,10 @@
 import { isEthiopic, isLicensedVersion, versionInfo, type ReadPrefs } from "@/lib/versions";
-import { Combined, Diffed, guard, Highlight, Marked, Moved, NoteChip, Restored, Vn } from "./marks";
+import { Combined, Diffed, guard, Highlight, Marked, Moved, NoteChip, Noted, Restored, Vn } from "./marks";
 import { coveredBy, spanEnd, textOf } from "./text";
 import type { ReadViewProps } from "./types";
 
 /** Compare: one row per verse, a column per version. */
-export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText }: ReadViewProps & { prefs: ReadPrefs }) {
+export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes }: ReadViewProps & { prefs: ReadPrefs }) {
   const cols = [prefs.primary, ...prefs.compare];
   const grid = cols.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
   return (
@@ -32,8 +32,8 @@ export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, 
               const moved = text ? null : licensed[c]?.moved?.[v.verse];
               const diffBase = isEthiopic(prefs.primary) === ethiopic && !end ? base : undefined;
               return (
-                <div key={c} {...(isLicensedVersion(c) ? { ...guard, "data-licensed": c } : {})}>
-                  <p className="mb-0.5 font-mono text-[0.62rem] uppercase tracking-widest text-muted sm:hidden">{versionInfo(c).short}</p>
+                <div key={c} data-version={c} {...(isLicensedVersion(c) ? { ...guard, "data-licensed": c } : {})}>
+                  <p data-noquote className="mb-0.5 select-none font-mono text-[0.62rem] uppercase tracking-widest text-muted sm:hidden">{versionInfo(c).short}</p>
                   {pending ? (
                     <p className="font-sans text-sm italic text-muted">
                       {licensedFailed.includes(c) ? `${versionInfo(c).short} is unavailable right now.` : `Loading ${versionInfo(c).short}…`}
@@ -44,12 +44,12 @@ export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, 
                       {amh && v.amh?.restored && <Restored />}{" "}
                       <Highlight color={highlights[v.verse]}>
                         {i === 0 ? (
-                          ethiopic ? text : <Marked text={text} marks={markFor(v, c)} trail={trail} noted={notedText[v.verse]} />
+                          ethiopic ? <Noted text={text} noted={notedText[v.verse]} /> : <Marked text={text} marks={markFor(v, c)} trail={trail} noted={notedText[v.verse]} />
                         ) : (
-                          <Diffed base={diffBase} text={text} />
+                          <Diffed base={diffBase} text={text} noted={notedText[v.verse]} />
                         )}
                       </Highlight>
-                      {i === 0 && <NoteChip verse={v.verse} count={noted[v.verse]} onOpen={onVerse} />}
+                      {i === 0 && <NoteChip verse={v.verse} count={noted[v.verse]} onOpen={onOpenNotes ?? onVerse} besideText={!!onOpenNotes} />}
                     </p>
                   ) : combined ? (
                     <p className="text-sm">
