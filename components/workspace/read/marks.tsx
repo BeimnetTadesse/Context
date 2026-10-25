@@ -87,7 +87,9 @@ export function Marked({ text, marks, trail, noted = [] }: { text: string; marks
     const piece = withNotes(text.slice(r.start, r.end), r.start, notes, `m${r.start}`);
     out.push(
       r.mark ? (
-        <span key={r.start}>
+        // A study note: click (or Enter) opens it beside the phrase. The text container handles the click.
+        <span key={r.start} data-study-letter={r.mark.letter} role="button" tabIndex={0} aria-label={`Study note ${r.mark.letter}`}
+          className="cursor-pointer rounded-sm transition hover:bg-paper-2 focus-visible:outline-2 focus-visible:outline-accent">
           <span
             className="underline decoration-2 underline-offset-[6px]"
             style={{ textDecorationColor: `var(--l-${r.mark.label})` }}

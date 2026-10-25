@@ -32,6 +32,7 @@ import { LicensedNotices, useLicensed } from "./Licensed";
 import type { ReadPrefs } from "@/lib/versions";
 import type { ChapterHighlights, HighlightColor } from "@/lib/highlights";
 import { SelectionPopover } from "./SelectionPopover";
+import { StudyNotePopover, StudyNotesKey } from "./read/StudyNote";
 import { TopBar } from "./TopBar";
 import { MethodNav } from "./MethodNav";
 import { EvidenceLedger } from "./EvidenceLedger";
@@ -86,6 +87,10 @@ export function Workspace({
   const [noteCount, setNoteCount] = useState(initialNoteCount);
   const [trail, setTrail] = useState<string | null>(null);
   const [layer, setLayer] = useState(true);
+  // The study note opened from an underlined phrase, and where to show it (relative to the text).
+  // `text` records which chapter and version it was opened on, so it disappears when either changes.
+  const [studyNote, setStudyNote] = useState<{ letter: string; top: number; left: number; text: string } | null>(null);
+  const closeStudyNote = useCallback(() => setStudyNote(null), []);
   const [tab, setTab] = useState<"margin" | "ask">("margin");
   const [askRequest, setAskRequest] = useState<AskRequest | null>(null);
   const [commentVerse, setCommentVerse] = useState<number | null>(null);
@@ -210,6 +215,8 @@ export function Workspace({
 
   const shownSide: SideTab = side === "word" && !prefs.greek ? "notes" : side;
 
+  const studyText = `${data.book.slug}/${data.chapter}/${prefs.primary}/${prefs.greek}`;
+
   const translationLabel = prefs.greek ? "SBLGNT" : [prefs.primary, ...prefs.compare].join(" · ");
 
   return (
@@ -254,8 +261,9 @@ export function Workspace({
             <>
               <div className="mt-8 flex flex-wrap items-start justify-between gap-4 border-y border-rule py-3">
                 <VersionToolbar prefs={prefs} onChange={changePrefs} />
-                <ProvenanceToggle on={layer} onToggle={() => setLayer(!layer)} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />
+                <ProvenanceToggle on={layer} onToggle={() => { setLayer(!layer); setStudyNote(null); }} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />
               </div>
+              {layer && letters.length > 0 && prefs.primary === "WEB" && !prefs.greek && <StudyNotesKey />}
               <p className="eyebrow mt-4 !text-[0.65rem] text-muted">
                 {prefs.greek
                   ? "Tap any Greek word for its dictionary entry"
@@ -263,9 +271,27 @@ export function Workspace({
               </p>
               {/* Clicking the words of a note opens it beside the text. */}
               <div
-                className="mt-8"
+                className="relative mt-8"
                 ref={textRef}
+                onKeyDown={(e) => {
+                  const el = (e.target as HTMLElement).closest<HTMLElement>("[data-study-letter]");
+                  if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); el.click(); }
+                }}
                 onClick={(e) => {
+                  // A study note: open it just below the phrase, kept inside the text column.
+                  const study = (e.target as HTMLElement).closest<HTMLElement>("[data-study-letter]");
+                  if (study && textRef.current) {
+                    const box = textRef.current.getBoundingClientRect();
+                    const at = study.getBoundingClientRect();
+                    const width = Math.min(416, box.width);
+                    setStudyNote({
+                      text: studyText,
+                      letter: study.dataset.studyLetter!,
+                      top: at.bottom - box.top + 8,
+                      left: Math.max(0, Math.min(at.left - box.left, box.width - width)),
+                    });
+                    return;
+                  }
                   const words = (e.target as HTMLElement).closest<HTMLElement>("[data-noted]");
                   const verse = Number(words?.closest("[id^='v']")?.id.slice(1));
                   const note = words && verseNotes.find((n) => n.verse === verse && quotedPhrase(n.doc, n.body) === words.dataset.noted);
@@ -274,6 +300,10 @@ export function Workspace({
               >
                 <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} onOpenNotes={openNotes} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} noted={noted} notedText={notedText} />
                 <LicensedNotices codes={shownVersions} texts={licensed.texts} />
+                {studyNote?.text === studyText && (() => {
+                  const claim = letters.find((c) => c.letter === studyNote.letter);
+                  return claim ? <StudyNotePopover claim={claim} letter={studyNote.letter} top={studyNote.top} left={studyNote.left} onClose={closeStudyNote} /> : null;
+                })()}
               </div>
               <SelectionPopover
                 container={textRef}
