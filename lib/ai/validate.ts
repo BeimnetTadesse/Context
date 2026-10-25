@@ -106,3 +106,18 @@ export function checkClaims(drafts: DraftClaim[], pack: PackLike, issues: Valida
 /** Does the text of an answer try to speak for God or collapse interpretation into fact? */
 const AUTHORITY_PATTERNS = [/\bgod is telling you\b/i, /\bthe bible means\b/i, /\bgod wants you to\b/i, /\bthis verse means\b/i];
 export const soundsAuthoritative = (s: string) => AUTHORITY_PATTERNS.some((p) => p.test(s));
+
+/**
+ * Does a study note just restate its verse? True when most of the note's content words are already in the verse
+ * (e.g. "Nicodemus is a Pharisee and a ruler of the Jews" on "…a man of the Pharisees named Nicodemus, a ruler of
+ * the Jews"). Notes should point at something the reader might miss, not repeat what they just read.
+ */
+const STOP = new Set("that this with from they them their there then than what when where which while have will would shall should into unto upon also been were your yours about these those because being does done just only more most very even such some like said says says".split(" "));
+const contentWords = (s: string) =>
+  [...new Set(norm(s).replace(/[^a-z\s]/g, " ").split(" ").filter((w) => w.length >= 4 && !STOP.has(w)).map((w) => w.replace(/(ing|ed|s)$/, "")))];
+export function restatesVerse(statement: string, verseText: string, threshold = 0.7) {
+  const words = contentWords(statement);
+  if (words.length < 3) return false;
+  const verse = new Set(contentWords(verseText));
+  return words.filter((w) => verse.has(w)).length / words.length >= threshold;
+}

@@ -33,7 +33,7 @@ pg_dump --no-owner --no-privileges -d context_dev \
   --exclude-table-data=users --exclude-table-data=notes --exclude-table-data=highlights \
   --exclude-table-data=assumption_guesses --exclude-table-data=ai_runs \
   -f "$TMP/content.sql"
-psql -d context_dev -q -c "\\copy (select null::int as user_id, kind, book_id, chapter, input, retrieved, output, validation, model, prompt_version, created_at from ai_runs where kind in ('chapter_study','book_overview','review')) to '$TMP/ai_local.csv' csv header"
+psql -d context_dev -q -c "\\copy (select null::int as user_id, kind, book_id, chapter, input, retrieved, output, validation, model, prompt_version, created_at from ai_runs where kind in ('chapter_study','book_overview','review','study_notes')) to '$TMP/ai_local.csv' csv header"
 
 echo "3/5 replacing Neon content (single transaction)…"
 "$PSQL" "$NEON" -q -v ON_ERROR_STOP=1 --single-transaction \
