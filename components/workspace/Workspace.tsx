@@ -25,6 +25,9 @@ import { quotedPhrase } from "@/lib/notes/doc";
  * notes take the left column; everything that opens it (verse numbers, Ask, Text or Assumption?) is hidden with it.
  */
 const SHOW_MARGIN = false;
+// Study notes (the underlined phrases in Read) are hidden until they're regenerated to say something worth reading:
+// the current ones mostly restate their verse. The switch, underlines and footnote card all return when this is true.
+const SHOW_STUDY_NOTES = false;
 import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
 import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
@@ -181,7 +184,7 @@ export function Workspace({
         .map((c, i) => ({ ...c, letter: String.fromCharCode(97 + i) })),
     [study.claims],
   );
-  const marks: PhraseMark[] = layer
+  const marks: PhraseMark[] = SHOW_STUDY_NOTES && layer
     ? letters.flatMap((c) => c.anchors.filter((a) => a.quote).map((a) => ({ ord: a.ord, quote: a.quote!, label: c.label, letter: c.letter })))
     : [];
 
@@ -261,9 +264,9 @@ export function Workspace({
             <>
               <div className="mt-8 flex flex-wrap items-start justify-between gap-4 border-y border-rule py-3">
                 <VersionToolbar prefs={prefs} onChange={changePrefs} />
-                <ProvenanceToggle on={layer} onToggle={() => { setLayer(!layer); setStudyNote(null); }} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />
+                {SHOW_STUDY_NOTES && <ProvenanceToggle on={layer} onToggle={() => { setLayer(!layer); setStudyNote(null); }} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />}
               </div>
-              {layer && letters.length > 0 && prefs.primary === "WEB" && !prefs.greek && <StudyNotesKey />}
+              {SHOW_STUDY_NOTES && layer && letters.length > 0 && prefs.primary === "WEB" && !prefs.greek && <StudyNotesKey />}
               <p className="eyebrow mt-4 !text-[0.65rem] text-muted">
                 {prefs.greek
                   ? "Tap any Greek word for its dictionary entry"
