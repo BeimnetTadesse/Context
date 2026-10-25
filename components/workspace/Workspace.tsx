@@ -13,7 +13,7 @@ import { postJson, StudyContext } from "@/components/study/context";
 import { ConnectionsStep, ContextStep, InterpretationsStep, LanguageStep, ObserveStep } from "@/components/study/Steps";
 import { ReflectStep, type SavedNote } from "@/components/study/Reflect";
 import type { AskRequest } from "./AskPanel";
-import { Margin } from "./Margin";
+import { LexiconCard, Margin } from "./Margin";
 import { notedPhrases, notedVerses, type VerseNote } from "@/components/notes/VerseNotes";
 import { ChapterNotes } from "@/components/notes/ChapterNotes";
 import { VerseCommentary } from "@/components/study/Commentators";
@@ -204,8 +204,11 @@ export function Workspace({
   const selectWord = (w: GreekWord) => {
     setCommentVerse(null);
     setWord(w);
+    setSide("word");
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
   };
+
+  const shownSide: SideTab = side === "word" && !prefs.greek ? "notes" : side;
 
   const translationLabel = prefs.greek ? "SBLGNT" : [prefs.primary, ...prefs.compare].join(" · ");
 
@@ -253,11 +256,11 @@ export function Workspace({
                 <VersionToolbar prefs={prefs} onChange={changePrefs} />
                 <ProvenanceToggle on={layer} onToggle={() => setLayer(!layer)} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />
               </div>
-              {!prefs.greek && (
-                <p className="eyebrow mt-4 !text-[0.65rem] text-muted">
-                  {SHOW_MARGIN ? "Tap a verse number for commentators and Church Fathers · Select any phrase to ask" : "Tap a verse number for commentary · Select any words to highlight them or add a note"}
-                </p>
-              )}
+              <p className="eyebrow mt-4 !text-[0.65rem] text-muted">
+                {prefs.greek
+                  ? "Tap any Greek word for its dictionary entry"
+                  : SHOW_MARGIN ? "Tap a verse number for commentators and Church Fathers · Select any phrase to ask" : "Tap a verse number for commentary · Select any words to highlight them or add a note"}
+              </p>
               {/* Clicking the words of a note opens it beside the text. */}
               <div
                 className="mt-8"
@@ -340,10 +343,14 @@ export function Workspace({
             {/* Desktop, Read step: notes beside the text, level with the words they're about. */}
             {step === "read" && (
               <aside className="hidden border-l border-rule lg:flex lg:flex-col">
-                <SideTabs count={verseNotes.length} side={side} onSide={setSide} />
+                <SideTabs count={verseNotes.length} side={shownSide} onSide={setSide} greek={prefs.greek} />
                 {/* flex-1: fills the column, so the commentary below can stay in view (sticky) all the way down. */}
                 <div className="flex-1 px-4 pb-12 pt-6 xl:px-5">
-                  {side === "commentary" ? (
+                  {shownSide === "word" ? (
+                    <div className="sticky top-36 max-h-[calc(100dvh-10rem)] overflow-y-auto pr-1">
+                      <WordPanel word={word} onClose={() => setWord(null)} />
+                    </div>
+                  ) : shownSide === "commentary" ? (
                     // Stays in view while you scroll the chapter, scrolling on its own if long.
                     <div className="sticky top-36 max-h-[calc(100dvh-10rem)] overflow-y-auto pr-1">
                       <CommentaryPanel verse={commentVerse} onClose={() => setCommentVerse(null)} />
@@ -374,7 +381,11 @@ export function Workspace({
             {sheet && (
             <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-3xl bg-paper px-5 pb-10 pt-4 shadow-2xl lg:hidden">
               <div className="mx-auto mb-5 h-1 w-10 shrink-0 rounded-full bg-rule" />
-              {side === "commentary" && commentVerse !== null ? (
+              {shownSide === "word" && word ? (
+                <div className="overflow-y-auto">
+                  <LexiconCard key={`${word.strongs}-${word.surface}`} word={word} onClose={() => { setWord(null); setSheet(false); }} />
+                </div>
+              ) : shownSide === "commentary" && commentVerse !== null ? (
                 <div className="overflow-y-auto">
                   <CommentaryPanel verse={commentVerse} onClose={() => { setCommentVerse(null); setSheet(false); }} />
                 </div>
@@ -411,9 +422,9 @@ export function Workspace({
  * The top of the right column: Notes now; Ask and Margin (commentators, lexicon, sources) are on their way back here.
  * Sticks under the top bar so it stays in reach while the notes scroll with the text.
  */
-type SideTab = "notes" | "commentary";
+type SideTab = "notes" | "commentary" | "word";
 
-function SideTabs({ count, side, onSide }: { count: number; side: SideTab; onSide: (t: SideTab) => void }) {
+function SideTabs({ count, side, onSide, greek }: { count: number; side: SideTab; onSide: (t: SideTab) => void; greek: boolean }) {
   const tab = (t: SideTab, label: React.ReactNode) => (
     <button type="button" role="tab" aria-selected={side === t} onClick={() => onSide(t)}
       className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${side === t ? "bg-card shadow-sm" : "text-muted hover:text-ink"}`}>
@@ -425,14 +436,30 @@ function SideTabs({ count, side, onSide }: { count: number; side: SideTab; onSid
       <div className="flex gap-1 rounded-full bg-paper-2 p-1" role="tablist" aria-label="Side panel">
         {tab("notes", <>Notes{count > 0 && <span className="font-mono text-[0.68rem] text-muted">{count}</span>}</>)}
         {tab("commentary", "Commentary")}
+        {/* In the Greek interlinear, the third tab is the dictionary entry for the word you tap. */}
+        {greek ? tab("word", "Word") : (
         <button type="button" role="tab" aria-selected={false} aria-disabled title="Ask is coming soon"
           className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted/70">
           Ask
           <span className="rounded-full bg-paper px-1.5 py-px font-mono text-[0.55rem] uppercase tracking-wider text-muted">Soon</span>
         </button>
+        )}
       </div>
     </div>
   );
+}
+
+/** The dictionary entry for the Greek word the reader tapped in the interlinear. */
+function WordPanel({ word, onClose }: { word: GreekWord | null; onClose: () => void }) {
+  if (!word) {
+    return (
+      <p className="text-sm leading-relaxed text-muted">
+        Tap any Greek word in the text to see its dictionary entry: its dictionary form, its range of meaning, and how
+        often it appears in the New Testament.
+      </p>
+    );
+  }
+  return <LexiconCard key={`${word.strongs}-${word.surface}`} word={word} onClose={onClose} />;
 }
 
 /** What commentators and Church Fathers say about the verse the reader tapped. */

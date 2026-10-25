@@ -43,7 +43,7 @@ function translationSources(p: ReadPrefs): Cited[] {
 const showsAmharic = (p: ReadPrefs) => !p.greek && (p.primary === "AMH" || p.compare.includes("AMH"));
 
 
-function LexiconCard({ word, onClose }: { word: GreekWord; onClose: () => void }) {
+export function LexiconCard({ word, onClose }: { word: GreekWord; onClose: () => void }) {
   // The parent keys this component by word, so state starts fresh for each word.
   const [entry, setEntry] = useState<Lexicon | null>(null);
   const [failed, setFailed] = useState(false);
