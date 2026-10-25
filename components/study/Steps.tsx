@@ -46,12 +46,14 @@ export function ObserveStep({ verses }: { verses: VerseRow[] }) {
                 </span>
                 <span>
                   <span className="block font-serif text-xl">{s.title}</span>
-                  {s.summary && <span className="text-ink-2">{s.summary}</span>}
+                  {s.continued && <span className="text-sm italic text-muted">continued from the previous chapter</span>}
                 </span>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-right"><StatusMark status="unverified" origin="ai_draft" /></p>
+          <p className="mt-2 text-right text-xs text-muted">
+            Section headings: <span className="font-mono">[BSB]</span> Berean Standard Bible, written by its translators · public domain
+          </p>
         </>
       ) : (
         <PrepareStudy what="structure and observations" />
@@ -208,6 +210,7 @@ function BookOverview() {
               </li>
             ))}
           </ol>
+          <p className="mt-2 text-right text-xs text-muted">Section headings: <span className="font-mono">[BSB]</span> Berean Standard Bible</p>
           <p className="mt-2 text-xs text-muted">Section titles from each chapter’s study (AI draft, unverified).</p>
         </details>
       )}

@@ -26,6 +26,7 @@
     "db:translations": "tsx scripts/import-translations.ts",
     "db:amharic": "tsx scripts/import-amharic-restore.ts",
     "db:reference": "tsx scripts/import-reference-works.ts",
+    "db:headings": "tsx scripts/import-headings.ts",
     "db:fathers": "tsx scripts/import-church-fathers.ts",
     "cache:warm": "tsx scripts/warm-cache.ts"
   },
