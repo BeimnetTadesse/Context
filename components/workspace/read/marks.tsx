@@ -114,8 +114,10 @@ export function Vn({ n, end, onVerse, active }: { n: number; end?: number | null
       <button
         type="button"
         onClick={() => onVerse(n)}
-        title={`Commentators and Church Fathers on verse ${n}`}
-        className={`rounded px-0.5 transition hover:bg-[var(--l-scholarly-bg)] hover:text-ink ${active ? "bg-[var(--l-scholarly-bg)] text-ink" : ""}`}
+        title={`Commentary on verse ${n}`}
+        aria-label={`Commentary on verse ${n}`}
+        // inline-block + padding: a real tap target (inside <sup> the button would otherwise be 0px tall).
+        className={`-my-1 inline-block rounded px-1 py-1 leading-none text-accent/80 transition hover:bg-[var(--l-scholarly-bg)] hover:text-ink ${active ? "bg-[var(--l-scholarly-bg)] !text-ink" : ""}`}
       >
         {label}
       </button>

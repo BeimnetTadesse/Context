@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackLink } from "@/components/BackLink";
 import { SiteHeader } from "@/components/SiteHeader";
 
 type Href = "/method" | "/provenance" | "/principles";
@@ -11,8 +12,9 @@ export function PublicPage({ current, eyebrow, title, intro, children, next }: {
   return (
     <div className="min-h-dvh bg-paper">
       <SiteHeader current={current} />
-      <main className="mx-auto max-w-5xl px-5 py-16 sm:px-10 lg:py-24">
-        <p className="eyebrow text-accent">{eyebrow}</p>
+      <main className="mx-auto max-w-5xl px-5 pb-16 pt-8 sm:px-10 lg:pb-24 lg:pt-10">
+        <BackLink />
+        <p className="eyebrow mt-10 text-accent lg:mt-14">{eyebrow}</p>
         <h1 className="mt-5 font-serif text-[clamp(2.6rem,5vw,4.2rem)] leading-[1.05]">{title}</h1>
         <p className="mt-6 max-w-2xl text-xl leading-relaxed text-ink-2">{intro}</p>
         <div className="mt-16">{children}</div>

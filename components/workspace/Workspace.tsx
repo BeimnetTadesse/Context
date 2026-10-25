@@ -16,6 +16,7 @@ import type { AskRequest } from "./AskPanel";
 import { Margin } from "./Margin";
 import { notedPhrases, notedVerses, type VerseNote } from "@/components/notes/VerseNotes";
 import { ChapterNotes } from "@/components/notes/ChapterNotes";
+import { VerseCommentary } from "@/components/study/Commentators";
 import { NotesRail } from "@/components/notes/NotesRail";
 import { quotedPhrase } from "@/lib/notes/doc";
 
@@ -88,6 +89,8 @@ export function Workspace({
   const [tab, setTab] = useState<"margin" | "ask">("margin");
   const [askRequest, setAskRequest] = useState<AskRequest | null>(null);
   const [commentVerse, setCommentVerse] = useState<number | null>(null);
+  // Right column of the Read step: the reader's notes, or the commentary on the verse they tapped.
+  const [side, setSide] = useState<SideTab>("notes");
   const textRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
   const [highlights, setHighlights] = useState<ChapterHighlights>(initialHighlights);
@@ -186,11 +189,13 @@ export function Workspace({
     setCommentVerse(v);
     setWord(null);
     setTab("margin");
+    setSide("commentary");
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
   };
 
   /** A Note chip in the text: open that verse's notes in the notes list (phone: in the sheet). */
   const openNotes = (verse: number) => {
+    setSide("notes");
     setNotesFocus({ verse, at: Date.now() });
     setActiveNote(verseNotes.find((n) => n.verse === verse)?.id ?? null);
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
@@ -250,7 +255,7 @@ export function Workspace({
               </div>
               {!prefs.greek && (
                 <p className="eyebrow mt-4 !text-[0.65rem] text-muted">
-                  {SHOW_MARGIN ? "Tap a verse number for commentators and Church Fathers · Select any phrase to ask" : "Select any words to highlight them or add a note"}
+                  {SHOW_MARGIN ? "Tap a verse number for commentators and Church Fathers · Select any phrase to ask" : "Tap a verse number for commentary · Select any words to highlight them or add a note"}
                 </p>
               )}
               {/* Clicking the words of a note opens it beside the text. */}
@@ -264,7 +269,7 @@ export function Workspace({
                   if (note) setActiveNote(note.id);
                 }}
               >
-                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={SHOW_MARGIN ? selectVerse : undefined} onOpenNotes={openNotes} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} noted={noted} notedText={notedText} />
+                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} onOpenNotes={openNotes} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} noted={noted} notedText={notedText} />
                 <LicensedNotices codes={shownVersions} texts={licensed.texts} />
               </div>
               <SelectionPopover
@@ -334,10 +339,16 @@ export function Workspace({
           <>
             {/* Desktop, Read step: notes beside the text, level with the words they're about. */}
             {step === "read" && (
-              <aside className="hidden border-l border-rule lg:block">
-                <SideTabs count={verseNotes.length} />
-                <div className="px-4 pb-12 pt-6 xl:px-5">
-                  {verseNotes.length ? (
+              <aside className="hidden border-l border-rule lg:flex lg:flex-col">
+                <SideTabs count={verseNotes.length} side={side} onSide={setSide} />
+                {/* flex-1: fills the column, so the commentary below can stay in view (sticky) all the way down. */}
+                <div className="flex-1 px-4 pb-12 pt-6 xl:px-5">
+                  {side === "commentary" ? (
+                    // Stays in view while you scroll the chapter, scrolling on its own if long.
+                    <div className="sticky top-36 max-h-[calc(100dvh-10rem)] overflow-y-auto pr-1">
+                      <CommentaryPanel verse={commentVerse} onClose={() => setCommentVerse(null)} />
+                    </div>
+                  ) : verseNotes.length ? (
                     <NotesRail
                       notes={verseNotes}
                       passage={`${data.book.name} ${data.chapter}`}
@@ -363,7 +374,13 @@ export function Workspace({
             {sheet && (
             <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-3xl bg-paper px-5 pb-10 pt-4 shadow-2xl lg:hidden">
               <div className="mx-auto mb-5 h-1 w-10 shrink-0 rounded-full bg-rule" />
-              <ChapterNotes notes={verseNotes} chapter={data.chapter} focus={notesFocus} onGo={() => { setSheet(false); if (step !== "read") changeStep("read"); }} />
+              {side === "commentary" && commentVerse !== null ? (
+                <div className="overflow-y-auto">
+                  <CommentaryPanel verse={commentVerse} onClose={() => { setCommentVerse(null); setSheet(false); }} />
+                </div>
+              ) : (
+                <ChapterNotes notes={verseNotes} chapter={data.chapter} focus={notesFocus} onGo={() => { setSheet(false); if (step !== "read") changeStep("read"); }} />
+              )}
             </div>
             )}
           </>
@@ -372,7 +389,7 @@ export function Workspace({
 
       {/* Phone: margin button + backdrop for the sheet */}
       <button
-        onClick={() => setSheet(true)}
+        onClick={() => { if (!SHOW_MARGIN) setSide("notes"); setSheet(true); }}
         className="fixed bottom-6 right-5 z-30 flex items-center gap-3 rounded-full bg-ink px-5 py-3 text-paper shadow-lg lg:hidden"
       >
         {SHOW_MARGIN ? (
@@ -394,23 +411,39 @@ export function Workspace({
  * The top of the right column: Notes now; Ask and Margin (commentators, lexicon, sources) are on their way back here.
  * Sticks under the top bar so it stays in reach while the notes scroll with the text.
  */
-function SideTabs({ count }: { count: number }) {
-  const soon = ["Ask", "Margin"];
+type SideTab = "notes" | "commentary";
+
+function SideTabs({ count, side, onSide }: { count: number; side: SideTab; onSide: (t: SideTab) => void }) {
+  const tab = (t: SideTab, label: React.ReactNode) => (
+    <button type="button" role="tab" aria-selected={side === t} onClick={() => onSide(t)}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${side === t ? "bg-card shadow-sm" : "text-muted hover:text-ink"}`}>
+      {label}
+    </button>
+  );
   return (
     <div className="sticky top-16 z-20 border-b border-rule bg-paper/95 px-4 py-3 backdrop-blur xl:px-5">
       <div className="flex gap-1 rounded-full bg-paper-2 p-1" role="tablist" aria-label="Side panel">
-        <button type="button" role="tab" aria-selected className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm shadow-sm">
-          Notes
-          {count > 0 && <span className="font-mono text-[0.68rem] text-muted">{count}</span>}
+        {tab("notes", <>Notes{count > 0 && <span className="font-mono text-[0.68rem] text-muted">{count}</span>}</>)}
+        {tab("commentary", "Commentary")}
+        <button type="button" role="tab" aria-selected={false} aria-disabled title="Ask is coming soon"
+          className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted/70">
+          Ask
+          <span className="rounded-full bg-paper px-1.5 py-px font-mono text-[0.55rem] uppercase tracking-wider text-muted">Soon</span>
         </button>
-        {soon.map((t) => (
-          <button key={t} type="button" role="tab" aria-selected={false} aria-disabled title={`${t} is coming soon`}
-            className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted/70">
-            {t}
-            <span className="rounded-full bg-paper px-1.5 py-px font-mono text-[0.55rem] uppercase tracking-wider text-muted">Soon</span>
-          </button>
-        ))}
       </div>
     </div>
   );
+}
+
+/** What commentators and Church Fathers say about the verse the reader tapped. */
+function CommentaryPanel({ verse, onClose }: { verse: number | null; onClose: () => void }) {
+  if (verse === null) {
+    return (
+      <div className="text-sm leading-relaxed text-muted">
+        <p>Tap a verse number in the text to see what commentators and the Church Fathers say about that verse.</p>
+        <p className="mt-3">Six commentators from Calvin to today, and the early church up to AD 750, in their own words.</p>
+      </div>
+    );
+  }
+  return <VerseCommentary key={verse} verse={verse} onClose={onClose} />;
 }
