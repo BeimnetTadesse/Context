@@ -10,6 +10,7 @@ import { STEPS, type StepKey } from "@/lib/steps";
 import { studyPath } from "@/lib/bible/refs";
 import { LAST_STUDY_COOKIE, lastStudyValue } from "@/lib/lastStudy";
 import { postJson, StudyContext } from "@/components/study/context";
+import { CrossRefArcsPanel } from "@/components/study/CrossRefArcs";
 import { BookPanel, ConnectionsStep, ContextStep, InterpretationsStep, LanguageStep, ObserveStep } from "@/components/study/Steps";
 import { ReflectStep, type SavedNote } from "@/components/study/Reflect";
 import type { AskRequest } from "./AskPanel";
@@ -416,8 +417,16 @@ export function Workspace({
                 </div>
               </aside>
             )}
+            {/* Connections: the chapter's cross-references across the whole Bible, as arcs (click for the full view). */}
+            {step === "connections" && (
+              <aside className="hidden border-l border-rule lg:block">
+                <div className="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto px-4 pb-12 pt-10 xl:px-5">
+                  <CrossRefArcsPanel />
+                </div>
+              </aside>
+            )}
             {/* Other steps: keep the right column, so every step has the same three-column page. Empty for now. */}
-            {step !== "read" && step !== "context" && <aside className="hidden border-l border-rule lg:block" aria-hidden="true" />}
+            {step !== "read" && step !== "context" && step !== "connections" && <aside className="hidden border-l border-rule lg:block" aria-hidden="true" />}
             {/* Phone: the notes list as a bottom sheet. */}
             {sheet && (
             <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-3xl bg-paper px-5 pb-10 pt-4 shadow-2xl lg:hidden">

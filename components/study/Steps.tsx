@@ -10,6 +10,7 @@ import { useStudy } from "./context";
 import { PrepareStudy } from "./PrepareStudy";
 import { ChurchFathers } from "./ChurchFathers";
 import { ReceptionTimeline } from "./Commentators";
+import { CrossRefArcsPanel } from "./CrossRefArcs";
 
 const Eyebrow = ({ children }: { children: React.ReactNode }) => <p className="eyebrow mb-4 mt-12 text-muted">{children}</p>;
 const SECTION_COLORS = ["var(--accent)", "#cbbfae", "#9d4b3a", "var(--ink)", "#b9a58c", "#6d5b4b"];
@@ -304,6 +305,8 @@ export function ConnectionsStep() {
   const computed = study.connections.every((c) => c.explanation === null);
   return (
     <>
+      {/* Phones have no right column: the arc diagram comes first here. */}
+      <div className="mt-8 lg:hidden"><CrossRefArcsPanel /></div>
       {groups.map((g) => (
         <section key={g}>
           <Eyebrow>{g}</Eyebrow>
