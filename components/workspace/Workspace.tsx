@@ -8,6 +8,7 @@ import type { StudyData } from "@/lib/data/study";
 import type { Label } from "@/lib/labels";
 import { STEPS, type StepKey } from "@/lib/steps";
 import { studyPath } from "@/lib/bible/refs";
+import { LAST_STUDY_COOKIE, lastStudyValue } from "@/lib/lastStudy";
 import { postJson, StudyContext } from "@/components/study/context";
 import { ConnectionsStep, ContextStep, InterpretationsStep, LanguageStep, ObserveStep } from "@/components/study/Steps";
 import { ReflectStep, type SavedNote } from "@/components/study/Reflect";
@@ -126,6 +127,11 @@ export function Workspace({
     window.scrollTo({ top: 0 });
   }, []);
 
+  // Remember where the reader is, so the notebook and profile can offer "← Back to Luke 2".
+  useEffect(() => {
+    document.cookie = `${LAST_STUDY_COOKIE}=${lastStudyValue(data.book.slug, data.chapter, step)}; path=/; max-age=${60 * 60 * 24 * 180}; samesite=lax`;
+  }, [data.book.slug, data.chapter, step]);
+
   const changePrefs = (p: ReadPrefs) => {
     setPrefs(p);
     setWord(null);
@@ -215,7 +221,7 @@ export function Workspace({
       />
 
       {/* Full width: the method sits against the left edge and the notes against the right, the text between. */}
-      <div className={`grid ${SHOW_MARGIN ? "mx-auto max-w-[1500px] lg:grid-cols-[280px_minmax(0,1fr)_340px]" : step === "read" ? "lg:grid-cols-[240px_minmax(0,1fr)_300px] xl:grid-cols-[264px_minmax(0,1fr)_360px]" : "lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[264px_minmax(0,1fr)]"}`}>
+      <div className={`grid ${SHOW_MARGIN ? "mx-auto max-w-[1500px] lg:grid-cols-[280px_minmax(0,1fr)_340px]" : "lg:grid-cols-[240px_minmax(0,1fr)_300px] xl:grid-cols-[264px_minmax(0,1fr)_360px]"}`}>
         <MethodNav
           step={step}
           onStep={changeStep}
@@ -351,6 +357,8 @@ export function Workspace({
                 </div>
               </aside>
             )}
+            {/* Other steps: keep the right column, so every step has the same three-column page. Empty for now. */}
+            {step !== "read" && <aside className="hidden border-l border-rule lg:block" aria-hidden="true" />}
             {/* Phone: the notes list as a bottom sheet. */}
             {sheet && (
             <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-3xl bg-paper px-5 pb-10 pt-4 shadow-2xl lg:hidden">

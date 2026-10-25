@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Dot, LabelPill, Wordmark } from "@/components/ui";
+import { Dot, LabelPill } from "@/components/ui";
+import { SiteHeader } from "@/components/SiteHeader";
 import { sql } from "@/lib/db";
 import { LABEL_INFO, type Label } from "@/lib/labels";
 import { STEPS } from "@/lib/steps";
@@ -37,19 +38,7 @@ export default async function Landing() {
 
   return (
     <div className="bg-paper">
-      <header className="border-b border-rule">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-10">
-          <Wordmark />
-          <nav className="hidden gap-10 text-[1.02rem] text-ink-2 md:flex">
-            <a href="#method" className="hover:text-ink">Method</a>
-            <a href="#provenance" className="hover:text-ink">Provenance</a>
-            <a href="#principles" className="hover:text-ink">Principles</a>
-          </nav>
-          <Link href="/study" className="rounded-xl border border-ink px-5 py-2.5 text-[1.02rem] hover:bg-ink hover:text-paper">
-            Open workspace
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* Hero */}
       <section className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-14 sm:px-10 lg:min-h-[calc(100dvh-5rem)] lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:py-10">
