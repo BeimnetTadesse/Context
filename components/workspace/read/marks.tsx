@@ -87,7 +87,9 @@ export function Marked({ text, marks, trail, noted = [] }: { text: string; marks
     const piece = withNotes(text.slice(r.start, r.end), r.start, notes, `m${r.start}`);
     out.push(
       r.mark ? (
-        <span key={r.start}>
+        // A study note: click (or Enter) opens it beside the phrase. The text container handles the click.
+        <span key={r.start} data-study-letter={r.mark.letter} role="button" tabIndex={0} aria-label={`Study note ${r.mark.letter}`}
+          className="cursor-pointer rounded-sm transition hover:bg-paper-2 focus-visible:outline-2 focus-visible:outline-accent">
           <span
             className="underline decoration-2 underline-offset-[6px]"
             style={{ textDecorationColor: `var(--l-${r.mark.label})` }}
@@ -114,8 +116,10 @@ export function Vn({ n, end, onVerse, active }: { n: number; end?: number | null
       <button
         type="button"
         onClick={() => onVerse(n)}
-        title={`Commentators and Church Fathers on verse ${n}`}
-        className={`rounded px-0.5 transition hover:bg-[var(--l-scholarly-bg)] hover:text-ink ${active ? "bg-[var(--l-scholarly-bg)] text-ink" : ""}`}
+        title={`Commentary on verse ${n}`}
+        aria-label={`Commentary on verse ${n}`}
+        // inline-block + padding: a real tap target (inside <sup> the button would otherwise be 0px tall).
+        className={`-my-1 inline-block rounded px-1 py-1 leading-none text-accent/80 transition hover:bg-[var(--l-scholarly-bg)] hover:text-ink ${active ? "bg-[var(--l-scholarly-bg)] !text-ink" : ""}`}
       >
         {label}
       </button>

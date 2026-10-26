@@ -1,5 +1,6 @@
 import "server-only";
 import * as z from "zod/v4";
+import type { TransactionSql } from "postgres";
 import { sql } from "@/lib/db";
 import type { Book } from "@/lib/bible/books";
 import { LABELS } from "@/lib/labels";
@@ -166,6 +167,36 @@ export async function reviewChapter(book: Book, chapter: number | null, pack: Ev
   return counts;
 }
 
+/** Write one checked claim with its verse anchors and citations (inside the caller's transaction). */
+export async function writeClaim(
+  tx: TransactionSql, book: Book, chapter: number, pack: EvidencePack, src: Record<string, number>,
+  c: CheckedClaim, step: string, topic: string | null = null, strongs: string | null = null,
+) {
+  const [row] = await tx<{ id: number }[]>`
+    insert into claims (label, statement, step, topic, book_id, chapter, strongs, origin)
+    values (${c.label}, ${c.statement}, ${step}, ${topic}, ${book.id}, ${chapter}, ${strongs}, 'ai_draft') returning id`;
+  for (const a of c.anchors) {
+    await tx`insert into claim_anchors (claim_id, start_ord, end_ord, quote) values (${row.id}, ${a.ord}, ${a.ord}, ${a.quote})`;
+  }
+  for (const cite of c.cites) {
+    const [kind, ref] = [cite.slice(0, 1), cite.slice(2)];
+    const item = pack.byId.get(cite);
+    const source =
+      kind === "V" ? src.WEB : kind === "L" ? src["Abbott-Smith"] : kind === "X" ? src.OpenBible
+      : kind === "K" ? src[String(item?.meta?.key)] : null;
+    if (!source) continue; // C: ids link claims to claims; the chain continues through that claim's own citations
+    const locator =
+      kind === "V" ? ref.replace(/^(\w+)\.(\d+)\.(\d+)$/, `${book.name} $2:$3`)
+      : kind === "L" ? ref
+      : kind === "K" ? `${book.name} ${String(item?.meta?.range ?? "").replace(/^on /, "")}`
+      : String(item?.meta?.ref ?? ref);
+    // A commentator citation carries the commentator's exact words (verified by the validator).
+    const quote = kind === "K" ? c.excerpts[cite] ?? null : null;
+    await tx`insert into citations (claim_id, source_id, locator, quote) values (${row.id}, ${source}, ${locator}, ${quote})`;
+  }
+  return row.id;
+}
+
 // ── Validate + write (one transaction; replaces the previous unverified draft) ──
 export async function saveStudy(book: Book, chapter: number, s: Study, pack: EvidencePack, issues: ValidationIssue[]) {
   const [sourceRows] = [await sql<{ id: number; key: string }[]>`select id, key from sources`];
@@ -193,31 +224,8 @@ export async function saveStudy(book: Book, chapter: number, s: Study, pack: Evi
     await tx`delete from reflection_items where book_id = ${book.id} and chapter = ${chapter}`;
     await tx`delete from language_notes where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft'`;
 
-    const insertClaim = async (c: CheckedClaim, step: string, topic: string | null = null, strongs: string | null = null) => {
-      const [row] = await tx<{ id: number }[]>`
-        insert into claims (label, statement, step, topic, book_id, chapter, strongs, origin)
-        values (${c.label}, ${c.statement}, ${step}, ${topic}, ${book.id}, ${chapter}, ${strongs}, 'ai_draft') returning id`;
-      for (const a of c.anchors) {
-        await tx`insert into claim_anchors (claim_id, start_ord, end_ord, quote) values (${row.id}, ${a.ord}, ${a.ord}, ${a.quote})`;
-      }
-      for (const cite of c.cites) {
-        const [kind, ref] = [cite.slice(0, 1), cite.slice(2)];
-        const item = pack.byId.get(cite);
-        const source =
-          kind === "V" ? src.WEB : kind === "L" ? src["Abbott-Smith"] : kind === "X" ? src.OpenBible
-          : kind === "K" ? src[String(item?.meta?.key)] : null;
-        if (!source) continue; // C: ids link claims to claims; the chain continues through that claim's own citations
-        const locator =
-          kind === "V" ? ref.replace(/^(\w+)\.(\d+)\.(\d+)$/, `${book.name} $2:$3`)
-          : kind === "L" ? ref
-          : kind === "K" ? `${book.name} ${String(item?.meta?.range ?? "").replace(/^on /, "")}`
-          : String(item?.meta?.ref ?? ref);
-        // A commentator citation carries the commentator's exact words (verified by the validator).
-        const quote = kind === "K" ? c.excerpts[cite] ?? null : null;
-        await tx`insert into citations (claim_id, source_id, locator, quote) values (${row.id}, ${source}, ${locator}, ${quote})`;
-      }
-      return row.id;
-    };
+    const insertClaim = (c: CheckedClaim, step: string, topic: string | null = null, strongs: string | null = null) =>
+      writeClaim(tx, book, chapter, pack, src, c, step, topic, strongs);
 
     let sort = 0;
     for (const sec of s.sections) {

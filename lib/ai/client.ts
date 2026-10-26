@@ -149,6 +149,8 @@ export async function generateStructured<S extends z.ZodType>(opts: {
   effort?: Effort;
   maxTokens?: number;
   audit?: { userId?: number | null; bookId?: number; chapter?: number; retrieved?: unknown };
+  /** Logged with the run; defaults to the chapter-study PROMPT_VERSION. */
+  promptVersion?: string;
 }): Promise<{ output: z.infer<S>; runId: number }> {
   const p = provider();
   if (!p) throw new AiUnavailableError();
@@ -159,7 +161,7 @@ export async function generateStructured<S extends z.ZodType>(opts: {
     insert into ai_runs (user_id, kind, book_id, chapter, input, retrieved, output, model, prompt_version)
     values (${opts.audit?.userId ?? null}, ${opts.kind}, ${opts.audit?.bookId ?? null}, ${opts.audit?.chapter ?? null},
             ${opts.input.slice(0, 20000)}, ${sql.json((opts.audit?.retrieved ?? null) as never)},
-            ${sql.json(output as never)}, ${model}, ${PROMPT_VERSION})
+            ${sql.json(output as never)}, ${model}, ${opts.promptVersion ?? PROMPT_VERSION})
     returning id`;
   return { output: output as z.infer<S>, runId: run.id };
 }

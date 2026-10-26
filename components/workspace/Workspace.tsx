@@ -8,13 +8,16 @@ import type { StudyData } from "@/lib/data/study";
 import type { Label } from "@/lib/labels";
 import { STEPS, type StepKey } from "@/lib/steps";
 import { studyPath } from "@/lib/bible/refs";
+import { LAST_STUDY_COOKIE, lastStudyValue } from "@/lib/lastStudy";
 import { postJson, StudyContext } from "@/components/study/context";
-import { ConnectionsStep, ContextStep, InterpretationsStep, LanguageStep, ObserveStep } from "@/components/study/Steps";
+import { CrossRefArcsPanel } from "@/components/study/CrossRefArcs";
+import { BookPanel, ConnectionsStep, ContextStep, InterpretationsStep, LanguageStep, ObserveStep } from "@/components/study/Steps";
 import { ReflectStep, type SavedNote } from "@/components/study/Reflect";
 import type { AskRequest } from "./AskPanel";
-import { Margin } from "./Margin";
+import { LexiconCard, Margin } from "./Margin";
 import { notedPhrases, notedVerses, type VerseNote } from "@/components/notes/VerseNotes";
 import { ChapterNotes } from "@/components/notes/ChapterNotes";
+import { VerseCommentary } from "@/components/study/Commentators";
 import { NotesRail } from "@/components/notes/NotesRail";
 import { quotedPhrase } from "@/lib/notes/doc";
 
@@ -23,6 +26,9 @@ import { quotedPhrase } from "@/lib/notes/doc";
  * notes take the left column; everything that opens it (verse numbers, Ask, Text or Assumption?) is hidden with it.
  */
 const SHOW_MARGIN = false;
+// Study notes (the underlined phrases in Read) are hidden until they're regenerated to say something worth reading:
+// the current ones mostly restate their verse. The switch, underlines and footnote card all return when this is true.
+const SHOW_STUDY_NOTES = false;
 import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
 import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
@@ -30,6 +36,7 @@ import { LicensedNotices, useLicensed } from "./Licensed";
 import type { ReadPrefs } from "@/lib/versions";
 import type { ChapterHighlights, HighlightColor } from "@/lib/highlights";
 import { SelectionPopover } from "./SelectionPopover";
+import { StudyNotePopover, StudyNotesKey } from "./read/StudyNote";
 import { TopBar } from "./TopBar";
 import { MethodNav } from "./MethodNav";
 import { EvidenceLedger } from "./EvidenceLedger";
@@ -84,9 +91,15 @@ export function Workspace({
   const [noteCount, setNoteCount] = useState(initialNoteCount);
   const [trail, setTrail] = useState<string | null>(null);
   const [layer, setLayer] = useState(true);
+  // The study note opened from an underlined phrase, and where to show it (relative to the text).
+  // `text` records which chapter and version it was opened on, so it disappears when either changes.
+  const [studyNote, setStudyNote] = useState<{ letter: string; top: number; left: number; text: string } | null>(null);
+  const closeStudyNote = useCallback(() => setStudyNote(null), []);
   const [tab, setTab] = useState<"margin" | "ask">("margin");
   const [askRequest, setAskRequest] = useState<AskRequest | null>(null);
   const [commentVerse, setCommentVerse] = useState<number | null>(null);
+  // Right column of the Read step: the reader's notes, or the commentary on the verse they tapped.
+  const [side, setSide] = useState<SideTab>("notes");
   const textRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
   const [highlights, setHighlights] = useState<ChapterHighlights>(initialHighlights);
@@ -125,6 +138,11 @@ export function Workspace({
     window.history.replaceState(null, "", url);
     window.scrollTo({ top: 0 });
   }, []);
+
+  // Remember where the reader is, so the notebook and profile can offer "← Back to Luke 2".
+  useEffect(() => {
+    document.cookie = `${LAST_STUDY_COOKIE}=${lastStudyValue(data.book.slug, data.chapter, step)}; path=/; max-age=${60 * 60 * 24 * 180}; samesite=lax`;
+  }, [data.book.slug, data.chapter, step]);
 
   const changePrefs = (p: ReadPrefs) => {
     setPrefs(p);
@@ -167,7 +185,7 @@ export function Workspace({
         .map((c, i) => ({ ...c, letter: String.fromCharCode(97 + i) })),
     [study.claims],
   );
-  const marks: PhraseMark[] = layer
+  const marks: PhraseMark[] = SHOW_STUDY_NOTES && layer
     ? letters.flatMap((c) => c.anchors.filter((a) => a.quote).map((a) => ({ ord: a.ord, quote: a.quote!, label: c.label, letter: c.letter })))
     : [];
 
@@ -180,11 +198,13 @@ export function Workspace({
     setCommentVerse(v);
     setWord(null);
     setTab("margin");
+    setSide("commentary");
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
   };
 
   /** A Note chip in the text: open that verse's notes in the notes list (phone: in the sheet). */
   const openNotes = (verse: number) => {
+    setSide("notes");
     setNotesFocus({ verse, at: Date.now() });
     setActiveNote(verseNotes.find((n) => n.verse === verse)?.id ?? null);
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
@@ -193,8 +213,13 @@ export function Workspace({
   const selectWord = (w: GreekWord) => {
     setCommentVerse(null);
     setWord(w);
+    setSide("word");
     if (window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
   };
+
+  const shownSide: SideTab = side === "word" && !prefs.greek ? "notes" : side;
+
+  const studyText = `${data.book.slug}/${data.chapter}/${prefs.primary}/${prefs.greek}`;
 
   const translationLabel = prefs.greek ? "SBLGNT" : [prefs.primary, ...prefs.compare].join(" · ");
 
@@ -215,7 +240,7 @@ export function Workspace({
       />
 
       {/* Full width: the method sits against the left edge and the notes against the right, the text between. */}
-      <div className={`grid ${SHOW_MARGIN ? "mx-auto max-w-[1500px] lg:grid-cols-[280px_minmax(0,1fr)_340px]" : step === "read" ? "lg:grid-cols-[240px_minmax(0,1fr)_300px] xl:grid-cols-[264px_minmax(0,1fr)_360px]" : "lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[264px_minmax(0,1fr)]"}`}>
+      <div className={`grid ${SHOW_MARGIN ? "mx-auto max-w-[1500px] lg:grid-cols-[280px_minmax(0,1fr)_340px]" : "lg:grid-cols-[240px_minmax(0,1fr)_300px] xl:grid-cols-[264px_minmax(0,1fr)_360px]"}`}>
         <MethodNav
           step={step}
           onStep={changeStep}
@@ -240,26 +265,49 @@ export function Workspace({
             <>
               <div className="mt-8 flex flex-wrap items-start justify-between gap-4 border-y border-rule py-3">
                 <VersionToolbar prefs={prefs} onChange={changePrefs} />
-                <ProvenanceToggle on={layer} onToggle={() => setLayer(!layer)} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />
+                {SHOW_STUDY_NOTES && <ProvenanceToggle on={layer} onToggle={() => { setLayer(!layer); setStudyNote(null); }} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />}
               </div>
-              {!prefs.greek && (
-                <p className="eyebrow mt-4 !text-[0.65rem] text-muted">
-                  {SHOW_MARGIN ? "Tap a verse number for commentators and Church Fathers · Select any phrase to ask" : "Select any words to highlight them or add a note"}
-                </p>
-              )}
+              {SHOW_STUDY_NOTES && layer && letters.length > 0 && prefs.primary === "WEB" && !prefs.greek && <StudyNotesKey />}
+              <p className="eyebrow mt-4 !text-[0.65rem] text-muted">
+                {prefs.greek
+                  ? "Tap any Greek word for its dictionary entry"
+                  : SHOW_MARGIN ? "Tap a verse number for commentators and Church Fathers · Select any phrase to ask" : "Tap a verse number for commentary · Select any words to highlight them or add a note"}
+              </p>
               {/* Clicking the words of a note opens it beside the text. */}
               <div
-                className="mt-8"
+                className="relative mt-8"
                 ref={textRef}
+                onKeyDown={(e) => {
+                  const el = (e.target as HTMLElement).closest<HTMLElement>("[data-study-letter]");
+                  if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); el.click(); }
+                }}
                 onClick={(e) => {
+                  // A study note: open it just below the phrase, kept inside the text column.
+                  const study = (e.target as HTMLElement).closest<HTMLElement>("[data-study-letter]");
+                  if (study && textRef.current) {
+                    const box = textRef.current.getBoundingClientRect();
+                    const at = study.getBoundingClientRect();
+                    const width = Math.min(416, box.width);
+                    setStudyNote({
+                      text: studyText,
+                      letter: study.dataset.studyLetter!,
+                      top: at.bottom - box.top + 8,
+                      left: Math.max(0, Math.min(at.left - box.left, box.width - width)),
+                    });
+                    return;
+                  }
                   const words = (e.target as HTMLElement).closest<HTMLElement>("[data-noted]");
                   const verse = Number(words?.closest("[id^='v']")?.id.slice(1));
                   const note = words && verseNotes.find((n) => n.verse === verse && quotedPhrase(n.doc, n.body) === words.dataset.noted);
                   if (note) setActiveNote(note.id);
                 }}
               >
-                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={SHOW_MARGIN ? selectVerse : undefined} onOpenNotes={openNotes} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} noted={noted} notedText={notedText} />
+                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} onOpenNotes={openNotes} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} noted={noted} notedText={notedText} />
                 <LicensedNotices codes={shownVersions} texts={licensed.texts} />
+                {studyNote?.text === studyText && (() => {
+                  const claim = letters.find((c) => c.letter === studyNote.letter);
+                  return claim ? <StudyNotePopover claim={claim} letter={studyNote.letter} top={studyNote.top} left={studyNote.left} onClose={closeStudyNote} /> : null;
+                })()}
               </div>
               <SelectionPopover
                 container={textRef}
@@ -328,10 +376,20 @@ export function Workspace({
           <>
             {/* Desktop, Read step: notes beside the text, level with the words they're about. */}
             {step === "read" && (
-              <aside className="hidden border-l border-rule lg:block">
-                <SideTabs count={verseNotes.length} />
-                <div className="px-4 pb-12 pt-6 xl:px-5">
-                  {verseNotes.length ? (
+              <aside className="hidden border-l border-rule lg:flex lg:flex-col">
+                <SideTabs count={verseNotes.length} side={shownSide} onSide={setSide} greek={prefs.greek} />
+                {/* flex-1: fills the column, so the commentary below can stay in view (sticky) all the way down. */}
+                <div className="flex-1 px-4 pb-12 pt-6 xl:px-5">
+                  {shownSide === "word" ? (
+                    <div className="sticky top-36 max-h-[calc(100dvh-10rem)] overflow-y-auto pr-1">
+                      <WordPanel word={word} onClose={() => setWord(null)} />
+                    </div>
+                  ) : shownSide === "commentary" ? (
+                    // Stays in view while you scroll the chapter, scrolling on its own if long.
+                    <div className="sticky top-36 max-h-[calc(100dvh-10rem)] overflow-y-auto pr-1">
+                      <CommentaryPanel verse={commentVerse} onClose={() => setCommentVerse(null)} />
+                    </div>
+                  ) : verseNotes.length ? (
                     <NotesRail
                       notes={verseNotes}
                       passage={`${data.book.name} ${data.chapter}`}
@@ -351,11 +409,39 @@ export function Workspace({
                 </div>
               </aside>
             )}
+            {/* Context: the whole book beside the chapter, so the middle column is about this chapter only. */}
+            {step === "context" && (
+              <aside className="hidden border-l border-rule lg:block">
+                <div className="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto px-4 pb-12 pt-10 xl:px-5">
+                  <BookPanel />
+                </div>
+              </aside>
+            )}
+            {/* Connections: the chapter's cross-references across the whole Bible, as arcs (click for the full view). */}
+            {step === "connections" && (
+              <aside className="hidden border-l border-rule lg:block">
+                <div className="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto px-4 pb-12 pt-10 xl:px-5">
+                  <CrossRefArcsPanel />
+                </div>
+              </aside>
+            )}
+            {/* Other steps: keep the right column, so every step has the same three-column page. Empty for now. */}
+            {step !== "read" && step !== "context" && step !== "connections" && <aside className="hidden border-l border-rule lg:block" aria-hidden="true" />}
             {/* Phone: the notes list as a bottom sheet. */}
             {sheet && (
             <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-3xl bg-paper px-5 pb-10 pt-4 shadow-2xl lg:hidden">
               <div className="mx-auto mb-5 h-1 w-10 shrink-0 rounded-full bg-rule" />
-              <ChapterNotes notes={verseNotes} chapter={data.chapter} focus={notesFocus} onGo={() => { setSheet(false); if (step !== "read") changeStep("read"); }} />
+              {shownSide === "word" && word ? (
+                <div className="overflow-y-auto">
+                  <LexiconCard key={`${word.strongs}-${word.surface}`} word={word} onClose={() => { setWord(null); setSheet(false); }} />
+                </div>
+              ) : shownSide === "commentary" && commentVerse !== null ? (
+                <div className="overflow-y-auto">
+                  <CommentaryPanel verse={commentVerse} onClose={() => { setCommentVerse(null); setSheet(false); }} />
+                </div>
+              ) : (
+                <ChapterNotes notes={verseNotes} chapter={data.chapter} focus={notesFocus} onGo={() => { setSheet(false); if (step !== "read") changeStep("read"); }} />
+              )}
             </div>
             )}
           </>
@@ -364,7 +450,7 @@ export function Workspace({
 
       {/* Phone: margin button + backdrop for the sheet */}
       <button
-        onClick={() => setSheet(true)}
+        onClick={() => { if (!SHOW_MARGIN) setSide("notes"); setSheet(true); }}
         className="fixed bottom-6 right-5 z-30 flex items-center gap-3 rounded-full bg-ink px-5 py-3 text-paper shadow-lg lg:hidden"
       >
         {SHOW_MARGIN ? (
@@ -386,23 +472,55 @@ export function Workspace({
  * The top of the right column: Notes now; Ask and Margin (commentators, lexicon, sources) are on their way back here.
  * Sticks under the top bar so it stays in reach while the notes scroll with the text.
  */
-function SideTabs({ count }: { count: number }) {
-  const soon = ["Ask", "Margin"];
+type SideTab = "notes" | "commentary" | "word";
+
+function SideTabs({ count, side, onSide, greek }: { count: number; side: SideTab; onSide: (t: SideTab) => void; greek: boolean }) {
+  const tab = (t: SideTab, label: React.ReactNode) => (
+    <button type="button" role="tab" aria-selected={side === t} onClick={() => onSide(t)}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${side === t ? "bg-card shadow-sm" : "text-muted hover:text-ink"}`}>
+      {label}
+    </button>
+  );
   return (
     <div className="sticky top-16 z-20 border-b border-rule bg-paper/95 px-4 py-3 backdrop-blur xl:px-5">
       <div className="flex gap-1 rounded-full bg-paper-2 p-1" role="tablist" aria-label="Side panel">
-        <button type="button" role="tab" aria-selected className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm shadow-sm">
-          Notes
-          {count > 0 && <span className="font-mono text-[0.68rem] text-muted">{count}</span>}
+        {tab("notes", <>Notes{count > 0 && <span className="font-mono text-[0.68rem] text-muted">{count}</span>}</>)}
+        {tab("commentary", "Commentary")}
+        {/* In the Greek interlinear, the third tab is the dictionary entry for the word you tap. */}
+        {greek ? tab("word", "Word") : (
+        <button type="button" role="tab" aria-selected={false} aria-disabled title="Ask is coming soon"
+          className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted/70">
+          Ask
+          <span className="rounded-full bg-paper px-1.5 py-px font-mono text-[0.55rem] uppercase tracking-wider text-muted">Soon</span>
         </button>
-        {soon.map((t) => (
-          <button key={t} type="button" role="tab" aria-selected={false} aria-disabled title={`${t} is coming soon`}
-            className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted/70">
-            {t}
-            <span className="rounded-full bg-paper px-1.5 py-px font-mono text-[0.55rem] uppercase tracking-wider text-muted">Soon</span>
-          </button>
-        ))}
+        )}
       </div>
     </div>
   );
+}
+
+/** The dictionary entry for the Greek word the reader tapped in the interlinear. */
+function WordPanel({ word, onClose }: { word: GreekWord | null; onClose: () => void }) {
+  if (!word) {
+    return (
+      <p className="text-sm leading-relaxed text-muted">
+        Tap any Greek word in the text to see its dictionary entry: its dictionary form, its range of meaning, and how
+        often it appears in the New Testament.
+      </p>
+    );
+  }
+  return <LexiconCard key={`${word.strongs}-${word.surface}`} word={word} onClose={onClose} />;
+}
+
+/** What commentators and Church Fathers say about the verse the reader tapped. */
+function CommentaryPanel({ verse, onClose }: { verse: number | null; onClose: () => void }) {
+  if (verse === null) {
+    return (
+      <div className="text-sm leading-relaxed text-muted">
+        <p>Tap a verse number in the text to see what commentators and the Church Fathers say about that verse.</p>
+        <p className="mt-3">Six commentators from Calvin to today, and the early church up to AD 750, in their own words.</p>
+      </div>
+    );
+  }
+  return <VerseCommentary key={verse} verse={verse} onClose={onClose} />;
 }
