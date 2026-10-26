@@ -42,7 +42,7 @@ export interface StudyData {
   generatedAt: string | null;
   claims: ClaimView[];
   /** The chapter's structure, from the BSB's section headings. `continued`: the section began in an earlier chapter. */
-  sections: { start: number; end: number; title: string; continued: boolean }[];
+  sections: { start: number; end: number; title: string; continued: boolean; source: string }[];
   repeated: { word: string; count: number; verses: number[] }[];
   language: {
     strongs: string;
@@ -151,7 +151,7 @@ async function loadStudy(book: Book, chapter: number, verses: VerseRow[]): Promi
   const headings = await bookHeadings(book.id);
   const sections = headings
     .filter((h) => h.start <= hi && h.end >= lo)
-    .map((h) => ({ start: verseOf(Math.max(h.start, lo)) ?? 1, end: verseOf(Math.min(h.end, hi)) ?? 1, title: h.title, continued: h.start < lo }));
+    .map((h) => ({ start: verseOf(Math.max(h.start, lo)) ?? 1, end: verseOf(Math.min(h.end, hi)) ?? 1, title: h.title, continued: h.start < lo, source: h.source }));
 
   // Language: curated/AI notes first; otherwise the chapter's weightiest lemmas, computed.
   const notes = await sql<{ strongs: string; meaning_here: string; translation_note: string | null; caution: string | null }[]>`
@@ -300,9 +300,9 @@ function dedupeCitations(rows: (Citation & { claim_id: number })[]): Citation[] 
 
 /** Every BSB heading in a book, with where its section ends (the verse before the next heading, or the book's end). */
 async function bookHeadings(bookId: number) {
-  const rows = await sql<{ start: number; title: string; chapter: number; verse: number; book_end: number }[]>`
-    select h.start_ord as start, h.title, v.chapter, v.verse, (select max(ord) from verses where book_id = ${bookId}) as book_end
-    from section_headings h join verses v on v.ord = h.start_ord
+  const rows = await sql<{ start: number; title: string; chapter: number; verse: number; book_end: number; source: string }[]>`
+    select h.start_ord as start, h.title, v.chapter, v.verse, s.key as source, (select max(ord) from verses where book_id = ${bookId}) as book_end
+    from section_headings h join verses v on v.ord = h.start_ord join sources s on s.id = h.source_id
     where h.book_id = ${bookId} order by h.start_ord`;
   const chapterEnds = new Map((await sql<{ chapter: number; last: number; last_ord: number }[]>`
     select chapter, max(verse) as last, max(ord) as last_ord from verses where book_id = ${bookId} group by chapter`).map((c) => [c.chapter, c]));
@@ -311,6 +311,6 @@ async function bookHeadings(bookId: number) {
     // For the outline: where the section ends within its own chapter (its last verse if it runs on).
     const ch = chapterEnds.get(r.chapter)!;
     const endInChapter = endOrd >= ch.last_ord ? ch.last : r.verse + (endOrd - r.start);
-    return { start: r.start, end: endOrd, title: r.title, chapter: r.chapter, verse: r.verse, endInChapter };
+    return { start: r.start, end: endOrd, title: r.title, chapter: r.chapter, verse: r.verse, endInChapter, source: r.source };
   });
 }
