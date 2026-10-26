@@ -6,7 +6,7 @@ config({ path: ".env.local" });
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";
-import { NT_BOOKS } from "../lib/bible/books";
+import { BOOKS } from "../lib/bible/books";
 import { scanRefs } from "../lib/bible/scan";
 import { toWeb } from "../lib/bible/versification";
 
@@ -112,7 +112,7 @@ async function main() {
   }
   // Commentaries use standard numbering; map to WEB's where they differ (e.g. Rom 16:25–27 → 14:24–26).
   const ord = (bookId: number, ch: number, v: number) => {
-    const osis = NT_BOOKS.find((b) => b.id === bookId)!.osis;
+    const osis = BOOKS.find((b) => b.id === bookId)!.osis;
     const w = toWeb(osis, ch, v);
     return ordOf.get(`${bookId}.${w.chapter}.${w.verse}`);
   };
@@ -125,11 +125,11 @@ async function main() {
     if (existsSync(booksFile)) {
       const data = JSON.parse(readFileSync(booksFile, "utf8")) as { books?: { id: string; introduction?: string | null }[] };
       for (const b of data.books ?? []) {
-        const book = NT_BOOKS.find((x) => x.usfm === b.id);
+        const book = BOOKS.find((x) => x.usfm === b.id);
         if (book && b.introduction?.trim()) intros.push({ source_id: sid[c.id], book_id: book.id, text: clean(b.introduction) });
       }
     }
-    for (const book of NT_BOOKS) {
+    for (const book of BOOKS) {
       for (let ch = 1; lastVerse.has(`${book.id}.${ch}`); ch++) {
         const file = join(RAW, c.id, book.usfm, `${ch}.json`);
         if (!existsSync(file)) continue;
@@ -176,7 +176,7 @@ async function main() {
   // Extract and resolve every Bible reference inside the notes.
   const refs: { note_id: number; raw: string; start_ord: number | null; end_ord: number | null; resolved: boolean }[] = [];
   for (const n of notes) {
-    const book = NT_BOOKS.find((b) => b.id === n.book_id)!;
+    const book = BOOKS.find((b) => b.id === n.book_id)!;
     for (const r of scanRefs(n.text, book)) {
       const a = toWeb(r.book.osis, r.chapter, r.verseStart);
       const z = toWeb(r.book.osis, r.chapterEnd, r.verseEnd);
