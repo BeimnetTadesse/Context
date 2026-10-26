@@ -85,12 +85,14 @@ export default async function Copyright() {
         </ul>
 
         <h2 className="mt-12 font-serif text-2xl">Amharic</h2>
-        <p className="mt-2 font-serif text-lg">Amharic Bible (1962), New Testament</p>
+        <p className="mt-2 font-serif text-lg">Amharic Bible (1962)</p>
         <p className="mt-1 text-sm leading-relaxed text-ink-2">{AMHARIC_1962_NOTICE}</p>
         <p className="mt-2 text-sm leading-relaxed text-ink-2">
-          The eBible.org e-text is missing some verses. Those (marked ◦ in the reader) were restored from{" "}
+          The New Testament is the eBible.org e-text; the verses it is missing (marked ◦ in the reader) and the whole Old
+          Testament come from{" "}
           <a href="https://www.wordproject.org/bibles/am/index.htm" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">WordProject’s copy</a>{" "}
-          of the same 1962 translation, which it makes available for non-profit use.
+          of the same 1962 translation, which it makes available for non-profit use. Old Testament chapters whose verses
+          don’t line up with the English are not shown until they are checked.
         </p>
 
         <h2 className="mt-12 font-serif text-2xl">Public domain</h2>

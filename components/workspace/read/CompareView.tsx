@@ -1,3 +1,4 @@
+import { useStudy } from "@/components/study/context";
 import { isEthiopic, isLicensedVersion, versionInfo, type ReadPrefs } from "@/lib/versions";
 import { Combined, Diffed, guard, Highlight, Marked, Moved, NoteChip, Noted, Restored, Vn } from "./marks";
 import { coveredBy, spanEnd, textOf } from "./text";
@@ -5,6 +6,7 @@ import type { ReadViewProps } from "./types";
 
 /** Compare: one row per verse, a column per version. */
 export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes }: ReadViewProps & { prefs: ReadPrefs }) {
+  const ot = useStudy().book.testament === "OT";
   const cols = [prefs.primary, ...prefs.compare];
   const grid = cols.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
   return (
@@ -64,7 +66,9 @@ export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, 
                       <Vn n={v.verse} /> <Moved to={v.movedTo} />
                     </p>
                   ) : amh ? (
-                    <p className="font-sans text-sm italic text-muted">Missing from the digital copies of the Amharic text.</p>
+                    <p className="font-sans text-sm italic text-muted">
+                      {ot ? "Not shown yet: in this chapter the Amharic verses don’t line up with the English ones, and they are being checked." : "Missing from the digital copies of the Amharic text."}
+                    </p>
                   ) : (
                     <p className="font-sans text-sm italic text-muted">
                       <Vn n={v.verse} /> Omitted — not in the manuscripts this version follows.

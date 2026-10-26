@@ -308,6 +308,13 @@ export function Workspace({
                   if (note) setActiveNote(note.id);
                 }}
               >
+                {/* An OT chapter whose Amharic was left out (numbered differently from the English): say so up front. */}
+                {!prefs.greek && (prefs.primary === "AMH" || prefs.compare.includes("AMH")) && data.book.testament === "OT" && data.verses.every((v) => !v.amh) && (
+                  <p className="mb-5 rounded-xl bg-paper-2 px-4 py-3 text-sm text-ink-2">
+                    The Amharic for {chapterLabel(data.book.name, data.chapter)} isn’t shown yet: in the copy Context uses, its verses
+                    don’t line up with the English ones here, and they are being checked rather than guessed.
+                  </p>
+                )}
                 {/* A Psalm title belongs to the text: it sits above verse 1 (in the Hebrew it is verse 1). */}
                 {data.title && !prefs.greek && (
                   <p className="mb-5 font-serif text-[1.15rem] italic text-ink-2">{data.title}</p>
