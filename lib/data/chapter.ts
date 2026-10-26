@@ -118,6 +118,9 @@ export interface LexiconEntry {
   gloss: string | null;
   definition: string | null;
   occurrences: number;
+  /** Which lexicon: "Abbott-Smith" (Greek) or "BDB-TBESH" (Hebrew), and its licence line. */
+  source: string;
+  license: string;
 }
 
 export function getLemma(strongs: string): Promise<LexiconEntry | null> {
@@ -126,9 +129,9 @@ export function getLemma(strongs: string): Promise<LexiconEntry | null> {
 
 async function loadLemma(strongs: string): Promise<LexiconEntry | null> {
   const [row] = await sql<LexiconEntry[]>`
-    select l.strongs, l.lemma, l.translit, l.gloss, l.definition,
+    select l.strongs, l.lemma, l.translit, l.gloss, l.definition, s.key as source, s.license,
            (select count(*)::int from greek_words g where g.strongs = l.strongs) as occurrences
-    from lemmas l where l.strongs = ${strongs}`;
+    from lemmas l join sources s on s.id = l.source_id where l.strongs = ${strongs}`;
   return row ?? null;
 }
 

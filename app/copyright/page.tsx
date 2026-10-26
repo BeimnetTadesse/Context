@@ -102,10 +102,12 @@ export default async function Copyright() {
           <li>King James Version (KJV) — public domain outside the United Kingdom (Crown letters patent apply within the UK)</li>
           <li>American Standard Version (ASV) and Young’s Literal Translation (YLT) — eBible.org</li>
         </ul>
-        <h2 className="mt-12 font-serif text-2xl">Greek, lexicon and commentaries</h2>
+        <h2 className="mt-12 font-serif text-2xl">Greek, Hebrew, lexicons and commentaries</h2>
         <p className="mt-2 text-ink-2">
           SBL Greek New Testament (CC BY 4.0) · Greek tagging and Abbott-Smith lexicon from STEP Bible, Tyndale House,
-          Cambridge (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY) · Tyndale Open Study Notes ©
+          Cambridge (www.STEPBible.org, CC BY 4.0) · Hebrew Bible (Leningrad Codex, public domain) with Hebrew and Aramaic
+          tagging (TAHOT) and the brief Hebrew lexicon abridged from Brown-Driver-Briggs (TBESH) from STEP Bible, Tyndale
+          House, Cambridge (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY) · Tyndale Open Study Notes ©
           Tyndale House Publishers (CC BY-SA 4.0) · Commentaries of Calvin, Henry, Gill, Clarke and Jamieson-Fausset-Brown
           (public domain), via the Free Use Bible API · The International Standard Bible Encyclopedia (1915) and Easton’s Bible Dictionary (1897), public domain, for book introductions and overviews. Details in the <Link href="/sources" className="text-accent underline underline-offset-4">source library</Link>.
         </p>

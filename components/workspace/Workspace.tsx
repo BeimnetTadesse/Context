@@ -104,9 +104,11 @@ export function Workspace({
   const [side, setSide] = useState<SideTab>("notes");
   const textRef = useRef<HTMLDivElement>(null);
   const [chosenPrefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
-  // The Greek interlinear only exists for the New Testament: in the Old Testament the reader's Greek setting is
-  // kept (for when they return to the NT) but not applied.
-  const greekAvailable = data.book.testament === "NT";
+  // The original-language interlinear: Greek for the New Testament, Hebrew (and Aramaic) for the Old. The reader's
+  // setting is one switch; it's only ignored for a chapter that has no tagged words at all.
+  const ot = data.book.testament === "OT";
+  const greekAvailable = data.verses.some((v) => v.greek.length > 0);
+  const language = ot ? "Hebrew" : "Greek";
   const prefs = useMemo(() => (greekAvailable || !chosenPrefs.greek ? chosenPrefs : { ...chosenPrefs, greek: false }), [chosenPrefs, greekAvailable]);
   const [highlights, setHighlights] = useState<ChapterHighlights>(initialHighlights);
   const [verseNotes, setVerseNotes] = useState<VerseNote[]>(initialVerseNotes);
@@ -227,7 +229,7 @@ export function Workspace({
 
   const studyText = `${data.book.slug}/${data.chapter}/${prefs.primary}/${prefs.greek}`;
 
-  const translationLabel = prefs.greek ? "SBLGNT" : [prefs.primary, ...prefs.compare].join(" · ");
+  const translationLabel = prefs.greek ? (ot ? "WLC" : "SBLGNT") : [prefs.primary, ...prefs.compare].join(" · ");
 
   return (
     <StudyContext.Provider value={ctx}>
@@ -256,6 +258,7 @@ export function Workspace({
           last={last}
           verseCount={data.verses.length}
           prefs={prefs}
+          originalLabel={ot ? "Hebrew · WLC" : "Greek · SBLGNT"}
         />
 
         {/* Step */}
@@ -264,19 +267,19 @@ export function Workspace({
             Step {current.numeral} of VII
           </p>
           <h1 className="mt-3 font-serif text-[clamp(2.4rem,4vw,3.2rem)] leading-tight">{current.name}</h1>
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-2">{step === "read" && !greekAvailable ? "Read the whole chapter before anything else, in any version or side by side." : STEP_INTRO[step]}</p>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-2">{step === "read" ? `Read the whole chapter before anything else. Switch to ${language} to explore any word.` : step === "language" ? `The ${language} terms that shape the chapter, with what the lexicons can and cannot tell us.` : STEP_INTRO[step]}</p>
           <EvidenceLedger study={study} bookName={data.book.name} chapter={data.chapter} />
 
           {step === "read" ? (
             <>
               <div className="mt-8 flex flex-wrap items-start justify-between gap-4 border-y border-rule py-3">
-                <VersionToolbar prefs={prefs} onChange={changePrefs} greekAvailable={greekAvailable} />
+                <VersionToolbar prefs={prefs} onChange={changePrefs} greekAvailable={greekAvailable} language={language} />
                 {SHOW_STUDY_NOTES && <ProvenanceToggle on={layer} onToggle={() => { setLayer(!layer); setStudyNote(null); }} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />}
               </div>
               {SHOW_STUDY_NOTES && layer && letters.length > 0 && prefs.primary === "WEB" && !prefs.greek && <StudyNotesKey />}
               <p className="eyebrow mt-4 !text-[0.65rem] text-muted">
                 {prefs.greek
-                  ? "Tap any Greek word for its dictionary entry"
+                  ? `Tap any ${language} word for its dictionary entry`
                   : SHOW_MARGIN ? "Tap a verse number for commentators and Church Fathers · Select any phrase to ask" : "Tap a verse number for commentary · Select any words to highlight them or add a note"}
               </p>
               {/* Clicking the words of a note opens it beside the text. */}
@@ -411,7 +414,7 @@ export function Workspace({
                 <div className="flex-1 px-4 pb-12 pt-6 xl:px-5">
                   {shownSide === "word" ? (
                     <div className="sticky top-36 max-h-[calc(100dvh-10rem)] overflow-y-auto pr-1">
-                      <WordPanel word={word} onClose={() => setWord(null)} />
+                      <WordPanel word={word} onClose={() => setWord(null)} language={language} />
                     </div>
                   ) : shownSide === "commentary" ? (
                     // Stays in view while you scroll the chapter, scrolling on its own if long.
@@ -515,7 +518,7 @@ function SideTabs({ count, side, onSide, greek }: { count: number; side: SideTab
       <div className="flex gap-1 rounded-full bg-paper-2 p-1" role="tablist" aria-label="Side panel">
         {tab("notes", <>Notes{count > 0 && <span className="font-mono text-[0.68rem] text-muted">{count}</span>}</>)}
         {tab("commentary", "Commentary")}
-        {/* In the Greek interlinear, the third tab is the dictionary entry for the word you tap. */}
+        {/* In the interlinear (Greek or Hebrew), the third tab is the dictionary entry for the word you tap. */}
         {greek ? tab("word", "Word") : (
         <button type="button" role="tab" aria-selected={false} aria-disabled title="Ask is coming soon"
           className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted/70">
@@ -528,13 +531,13 @@ function SideTabs({ count, side, onSide, greek }: { count: number; side: SideTab
   );
 }
 
-/** The dictionary entry for the Greek word the reader tapped in the interlinear. */
-function WordPanel({ word, onClose }: { word: GreekWord | null; onClose: () => void }) {
+/** The dictionary entry for the Greek or Hebrew word the reader tapped in the interlinear. */
+function WordPanel({ word, onClose, language }: { word: GreekWord | null; onClose: () => void; language: string }) {
   if (!word) {
     return (
       <p className="text-sm leading-relaxed text-muted">
-        Tap any Greek word in the text to see its dictionary entry: its dictionary form, its range of meaning, and how
-        often it appears in the New Testament.
+        Tap any {language} word in the text to see its dictionary entry: its dictionary form, its range of meaning, and how
+        often it appears in the {language === "Hebrew" ? "Old" : "New"} Testament.
       </p>
     );
   }

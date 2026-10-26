@@ -55,8 +55,9 @@ export function PrepareStudy({ what }: { what: string }) {
       <div className="mt-8 rounded-2xl border border-dashed border-rule bg-card/60 p-7">
         <p className="eyebrow mb-3 text-accent">Coming for the Old Testament</p>
         <p className="max-w-2xl leading-relaxed text-ink-2">
-          The {what} for the Old Testament is being prepared. For now you can read {chapterLabel(book.name, chapter)} in every
-          version, see how it is structured and which words repeat, and follow its cross-references across the Bible.
+          This part of the study ({what}) is still being prepared for the Old Testament. For now you can read{" "}
+          {chapterLabel(book.name, chapter)} in every version, explore every Hebrew word in Read (Hebrew interlinear), see what
+          commentators and the Church Fathers say about each verse, and follow its cross-references across the Bible.
         </p>
       </div>
     );

@@ -30,6 +30,7 @@
     "db:headings": "tsx scripts/import-headings.ts",
     "db:titles": "tsx scripts/import-titles.ts",
     "db:xrefs-ot": "tsx scripts/import-xrefs-ot.ts",
+    "db:hebrew": "tsx scripts/import-hebrew.ts",
     "db:fathers": "tsx scripts/import-church-fathers.ts",
     "cache:warm": "tsx scripts/warm-cache.ts"
   },
