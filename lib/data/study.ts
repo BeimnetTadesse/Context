@@ -207,7 +207,7 @@ async function loadStudy(book: Book, chapter: number, verses: VerseRow[]): Promi
         group: t.group_name,
         relation: t.relation,
         ref: `${r.name} ${r.c}:${r.v}${t.to_end !== t.to_start ? `–${r.ev}` : ""}`,
-        href: r.testament === "NT" ? `/study/${r.slug}/${r.c}#v${r.v}` : "",
+        href: `/study/${r.slug}/${r.c}#v${r.v}`,
         text: r.text,
         explanation: t.explanation,
         votes: t.votes,

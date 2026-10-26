@@ -1,4 +1,4 @@
-import { clean, json, ntChapter } from "@/lib/api";
+import { clean, json, bibleChapter } from "@/lib/api";
 import { sql } from "@/lib/db";
 import { docToText, parseDoc, type NoteDoc } from "@/lib/notes/doc";
 import { currentUserId, ensureUserId } from "@/lib/user";
@@ -8,7 +8,7 @@ const KINDS = ["note", "reflection", "text_says", "i_bring", "text_issue"];
 
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
-  const target = ntChapter(b.book, b.chapter);
+  const target = bibleChapter(b.book, b.chapter);
   // Rich notes send the editor's document; the plain-text body is derived from it. Plain notes send body.
   const doc = b.doc === undefined ? null : parseDoc(b.doc);
   if (b.doc !== undefined && !doc) return json({ error: "bad_request" }, 400);

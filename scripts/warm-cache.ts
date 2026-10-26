@@ -1,7 +1,7 @@
 // Pre-load every NT chapter into the live site's data cache after a deploy, so no reader waits for the
 // (possibly sleeping) database. Four requests at a time; each gets up to 90 seconds.
 // Run: npm run cache:warm            (or: npm run cache:warm -- https://preview-url.vercel.app)
-import { NT_BOOKS } from "../lib/bible/books";
+import { BOOKS } from "../lib/bible/books";
 
 const SITE = (process.argv[2] ?? "https://context-black.vercel.app").replace(/\/$/, "");
 const PARALLEL = 4;
@@ -17,7 +17,7 @@ async function hit(path: string) {
 }
 
 async function main() {
-  const paths = NT_BOOKS.flatMap((b) => Array.from({ length: b.chapters }, (_, i) => `/study/${b.slug}/${i + 1}`));
+  const paths = BOOKS.flatMap((b) => Array.from({ length: b.chapters }, (_, i) => `/study/${b.slug}/${i + 1}`));
   const failed: string[] = [];
   let next = 0;
   await Promise.all(

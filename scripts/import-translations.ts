@@ -1,4 +1,4 @@
-// Add public-domain translations (NT) without touching anything else.
+// Add public-domain translations (the whole Bible) without touching anything else.
 // Additive and idempotent: replaces only these translations' rows.
 // Run: npm run db:translations
 import { config } from "dotenv";
@@ -43,7 +43,7 @@ async function main() {
     for (const f of readdirSync(dir).filter((f) => f.endsWith(".usfm"))) {
       for (const verse of parseUsfm(join(dir, f))) {
         const book = BOOKS.find((b) => b.id === verse.book)!;
-        if (book.testament !== "NT" || !verse.text) continue;
+        if (!verse.text) continue;
         const w = toWeb(book.osis, verse.chapter, verse.verse);
         const ord = ordOf.get(`${verse.book}.${w.chapter}.${w.verse}`);
         if (!ord || seen.has(ord)) {
@@ -58,7 +58,7 @@ async function main() {
       await tx`delete from verse_texts where translation_code = ${v.code}`;
       for (let i = 0; i < rows.length; i += 4000) await tx`insert into verse_texts ${tx(rows.slice(i, i + 4000))}`;
     });
-    console.log(`${v.code}: ${rows.length} NT verses${unplaced.length ? ` · not placed: ${unplaced.join(", ")}` : ""}`);
+    console.log(`${v.code}: ${rows.length} verses${unplaced.length ? ` · not placed (${unplaced.length}): ${unplaced.slice(0, 20).join(", ")}${unplaced.length > 20 ? " …" : ""}` : ""}`);
   }
   await sql.end();
 }

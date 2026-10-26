@@ -33,6 +33,7 @@ import { PassageSwitcher, type NtBook } from "./PassageSwitcher";
 import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
 import { LicensedNotices, useLicensed } from "./Licensed";
+import { AMHARIC_1962_NOTICE } from "@/lib/notices";
 import type { ReadPrefs } from "@/lib/versions";
 import type { ChapterHighlights, HighlightColor } from "@/lib/highlights";
 import { SelectionPopover } from "./SelectionPopover";
@@ -41,6 +42,7 @@ import { TopBar } from "./TopBar";
 import { MethodNav } from "./MethodNav";
 import { EvidenceLedger } from "./EvidenceLedger";
 import { ProvenanceToggle } from "./ProvenanceToggle";
+import { chapterLabel } from "@/lib/bible/books";
 
 const STEP_INTRO: Record<StepKey, string> = {
   read: "Read the whole chapter before anything else. Switch to Greek to explore any word.",
@@ -101,7 +103,11 @@ export function Workspace({
   // Right column of the Read step: the reader's notes, or the commentary on the verse they tapped.
   const [side, setSide] = useState<SideTab>("notes");
   const textRef = useRef<HTMLDivElement>(null);
-  const [prefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
+  const [chosenPrefs, setPrefs] = useState<ReadPrefs>(initialPrefs);
+  // The Greek interlinear only exists for the New Testament: in the Old Testament the reader's Greek setting is
+  // kept (for when they return to the NT) but not applied.
+  const greekAvailable = data.book.testament === "NT";
+  const prefs = useMemo(() => (greekAvailable || !chosenPrefs.greek ? chosenPrefs : { ...chosenPrefs, greek: false }), [chosenPrefs, greekAvailable]);
   const [highlights, setHighlights] = useState<ChapterHighlights>(initialHighlights);
   const [verseNotes, setVerseNotes] = useState<VerseNote[]>(initialVerseNotes);
   const noted = useMemo(() => notedVerses(verseNotes), [verseNotes]);
@@ -258,13 +264,13 @@ export function Workspace({
             Step {current.numeral} of VII
           </p>
           <h1 className="mt-3 font-serif text-[clamp(2.4rem,4vw,3.2rem)] leading-tight">{current.name}</h1>
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-2">{STEP_INTRO[step]}</p>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-2">{step === "read" && !greekAvailable ? "Read the whole chapter before anything else, in any version or side by side." : STEP_INTRO[step]}</p>
           <EvidenceLedger study={study} bookName={data.book.name} chapter={data.chapter} />
 
           {step === "read" ? (
             <>
               <div className="mt-8 flex flex-wrap items-start justify-between gap-4 border-y border-rule py-3">
-                <VersionToolbar prefs={prefs} onChange={changePrefs} />
+                <VersionToolbar prefs={prefs} onChange={changePrefs} greekAvailable={greekAvailable} />
                 {SHOW_STUDY_NOTES && <ProvenanceToggle on={layer} onToggle={() => { setLayer(!layer); setStudyNote(null); }} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />}
               </div>
               {SHOW_STUDY_NOTES && layer && letters.length > 0 && prefs.primary === "WEB" && !prefs.greek && <StudyNotesKey />}
@@ -302,8 +308,24 @@ export function Workspace({
                   if (note) setActiveNote(note.id);
                 }}
               >
+                {/* A Psalm title belongs to the text: it sits above verse 1 (in the Hebrew it is verse 1). */}
+                {data.title && !prefs.greek && (
+                  <p className="mb-5 font-serif text-[1.15rem] italic text-ink-2">{data.title}</p>
+                )}
                 <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} onOpenNotes={openNotes} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} noted={noted} notedText={notedText} />
                 <LicensedNotices codes={shownVersions} texts={licensed.texts} />
+                {/* The 1962 Amharic Bible's statement must be shown in full wherever its text is (the margin that
+                    used to carry it is hidden). */}
+                {!prefs.greek && (prefs.primary === "AMH" || prefs.compare.includes("AMH")) && (
+                  <div className="mt-6 space-y-2 border-t border-rule pt-4 text-[0.75rem] leading-relaxed text-muted">
+                    <p><span className="font-mono text-accent">አማርኛ 1962</span> — {AMHARIC_1962_NOTICE}</p>
+                    <p>
+                      {data.book.testament === "OT"
+                        ? "The Old Testament text is WordProject’s copy of the same 1962 translation (wordproject.org)."
+                        : "Verses marked ◦ were missing from the eBible.org e-text and are restored from WordProject’s copy of the same translation (wordproject.org)."}
+                    </p>
+                  </div>
+                )}
                 {studyNote?.text === studyText && (() => {
                   const claim = letters.find((c) => c.letter === studyNote.letter);
                   return claim ? <StudyNotePopover claim={claim} letter={studyNote.letter} top={studyNote.top} left={studyNote.left} onClose={closeStudyNote} /> : null;
@@ -392,7 +414,7 @@ export function Workspace({
                   ) : verseNotes.length ? (
                     <NotesRail
                       notes={verseNotes}
-                      passage={`${data.book.name} ${data.chapter}`}
+                      passage={chapterLabel(data.book.name, data.chapter)}
                       textRef={textRef}
                       active={activeNote}
                       onActivate={setActiveNote}

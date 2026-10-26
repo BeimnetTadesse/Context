@@ -4,7 +4,7 @@ import { VERSIONS, isEthiopic, versionInfo, type ReadPrefs, type VersionCode } f
 import { VersionSelect } from "./VersionSelect";
 
 /** Choose the main version, up to two to compare, or the Greek interlinear. */
-export function VersionToolbar({ prefs, onChange }: { prefs: ReadPrefs; onChange: (p: ReadPrefs) => void }) {
+export function VersionToolbar({ prefs, onChange, greekAvailable = true }: { prefs: ReadPrefs; onChange: (p: ReadPrefs) => void; greekAvailable?: boolean }) {
   const toggleCompare = (c: VersionCode) => {
     const has = prefs.compare.includes(c);
     const compare = has ? prefs.compare.filter((x) => x !== c) : [...prefs.compare, c].slice(-2);
@@ -21,13 +21,14 @@ export function VersionToolbar({ prefs, onChange }: { prefs: ReadPrefs; onChange
             onChange={(primary) => onChange({ primary, compare: prefs.compare.filter((c) => c !== primary), greek: false })}
           />
         </div>
-        <button
+        {/* The Greek interlinear covers the New Testament; the Hebrew for the Old Testament comes later. */}
+        {greekAvailable && <button
           onClick={() => onChange({ ...prefs, greek: !prefs.greek, compare: prefs.greek ? prefs.compare : [] })}
           aria-pressed={prefs.greek}
           className={`rounded-full border px-3.5 py-1.5 text-sm ${prefs.greek ? "border-ink bg-ink text-paper" : "border-rule bg-card text-ink-2 hover:border-ink"}`}
         >
           Greek interlinear
-        </button>
+        </button>}
         <span className="hidden text-xs text-muted md:inline">{versionInfo(prefs.primary).note}</span>
       </div>
 

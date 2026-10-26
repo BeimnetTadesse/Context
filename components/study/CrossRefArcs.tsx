@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Arc, ChapterArcs } from "@/lib/data/arcs";
 import { useStudy } from "./context";
+import { chapterLabel } from "@/lib/bible/books";
 
 // Cross-references as arcs (after Chris Harrison's "Bible cross-references"): the Bible as a line of chapters,
 // bars sized by verse count, and an arc from this chapter to every place it is linked to. Old Testament arcs and
@@ -132,7 +133,7 @@ export function CrossRefArcsPanel() {
   const data = useArcs();
   const [open, setOpen] = useState(false);
   const targets = useMemo(() => (data ? targetsOf(data, null) : []), [data]);
-  const name = `${book.name} ${chapter}`;
+  const name = chapterLabel(book.name, chapter);
   return (
     <section aria-label="Cross-references across the Bible">
       <p className="eyebrow !text-[0.62rem] text-accent">Across the Bible</p>

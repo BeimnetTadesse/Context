@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStudy } from "./context";
 import { SignInToUse } from "@/components/study/SignInToUse";
+import { chapterLabel } from "@/lib/bible/books";
 
 const STAGES = [
   "Gathering the verses and the Greek text…",
@@ -47,6 +48,19 @@ export function PrepareStudy({ what }: { what: string }) {
       if (timer.current) clearInterval(timer.current);
     }
   };
+
+  // Old Testament studies aren't available yet (they need the Hebrew text and lexicon first): say so plainly.
+  if (book.testament === "OT") {
+    return (
+      <div className="mt-8 rounded-2xl border border-dashed border-rule bg-card/60 p-7">
+        <p className="eyebrow mb-3 text-accent">Coming for the Old Testament</p>
+        <p className="max-w-2xl leading-relaxed text-ink-2">
+          The {what} for the Old Testament is being prepared. For now you can read {chapterLabel(book.name, chapter)} in every
+          version, see how it is structured and which words repeat, and follow its cross-references across the Bible.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-8 rounded-2xl border border-dashed border-rule bg-card/60 p-7">

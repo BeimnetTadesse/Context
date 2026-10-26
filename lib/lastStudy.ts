@@ -1,4 +1,4 @@
-import { bookBySlug } from "@/lib/bible/books";
+import { bookBySlug, chapterLabel } from "@/lib/bible/books";
 import { isStepKey, type StepKey } from "@/lib/steps";
 
 // Where the reader last was in the workspace, so the notebook and profile can link straight back.
@@ -11,9 +11,9 @@ export function parseLastStudy(value: string | undefined): { href: string; label
   if (!m) return null;
   const book = bookBySlug(m[1]);
   const chapter = Number(m[2]);
-  if (!book || book.testament !== "NT" || chapter < 1) return null;
+  if (!book || chapter < 1 || chapter > book.chapters) return null;
   const step: StepKey = isStepKey(m[3]) ? m[3] : "read";
-  return { href: `/study/${book.slug}/${chapter}${step === "read" ? "" : `?step=${step}`}`, label: `${book.name} ${chapter}` };
+  return { href: `/study/${book.slug}/${chapter}${step === "read" ? "" : `?step=${step}`}`, label: chapterLabel(book.name, chapter) };
 }
 
 export const lastStudyValue = (slug: string, chapter: number, step: StepKey) => `${slug}/${chapter}/${step}`;

@@ -1,4 +1,4 @@
-import { json, ntChapter } from "@/lib/api";
+import { json, bibleChapter } from "@/lib/api";
 import { sql } from "@/lib/db";
 import { chapterHighlights } from "@/lib/data/highlights";
 import { isHighlightColor } from "@/lib/highlights";
@@ -8,7 +8,7 @@ import { ensureUserId } from "@/lib/user";
 // Returns the reader's highlights for the whole chapter.
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
-  const target = ntChapter(b.book, b.chapter);
+  const target = bibleChapter(b.book, b.chapter);
   const verses: number[] = Array.isArray(b.verses) ? b.verses.filter((v: unknown) => Number.isInteger(v)).slice(0, 200) : [];
   if (!target || !verses.length || !(b.color === null || isHighlightColor(b.color))) return json({ error: "bad_request" }, 400);
   const userId = await ensureUserId();

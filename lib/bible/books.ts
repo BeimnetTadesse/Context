@@ -106,8 +106,20 @@ export const NT_BOOKS = BOOKS.filter((b) => b.testament === "NT");
 
 export const bookBySlug = (slug: string) => BOOKS.find((b) => b.slug === slug);
 
+/** How one chapter (or verse) of a book is named: "Psalm 23", not "Psalms 23". */
+export const chapterName = (bookName: string) => (bookName === "Psalms" ? "Psalm" : bookName);
+export const chapterLabel = (bookName: string, chapter: number) => `${chapterName(bookName)} ${chapter}`;
+
+/** A chapter of any book of the Bible from untrusted input, or null (the chapter must exist). */
+export function bibleChapter(slug: unknown, chapter: unknown) {
+  const book = typeof slug === "string" ? bookBySlug(slug) : undefined;
+  const ch = Number(chapter);
+  if (!book || !Number.isInteger(ch) || ch < 1 || ch > book.chapters) return null;
+  return { book, chapter: ch };
+}
+
 /**
- * A New Testament chapter from untrusted input (URL params, request bodies), or null.
+ * A New Testament chapter from untrusted input (still required where the AI study is involved: OT studies come later) (URL params, request bodies), or null.
  * The chapter must exist: "John 99" is rejected before it reaches the database, an AI call or a provider.
  */
 export function ntChapter(slug: unknown, chapter: unknown) {

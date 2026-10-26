@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { sql } from "@/lib/db";
 import { cachedContent, chapterTag } from "@/lib/cache";
-import { bookBySlug, type Book } from "@/lib/bible/books";
+import { bookBySlug, type Book, chapterLabel } from "@/lib/bible/books";
 import { movedTo } from "@/lib/bible/versification";
 
 export interface GreekWord {
@@ -33,6 +33,8 @@ export interface ChapterData {
   chapter: number;
   chapterCount: number;
   verses: VerseRow[];
+  /** The chapter's superscription, e.g. Psalm 23's "A Psalm by David." (WEB), shown above verse 1. */
+  title: string | null;
   prev: { slug: string; chapter: number; label: string } | null;
   next: { slug: string; chapter: number; label: string } | null;
 }
@@ -47,7 +49,7 @@ export const getChapter = cache((slug: string, chapter: number): Promise<Chapter
 
 async function loadChapter(slug: string, chapter: number): Promise<ChapterData | null> {
   const book = bookBySlug(slug);
-  if (!book || book.testament !== "NT" || !Number.isInteger(chapter)) return null;
+  if (!book || !Number.isInteger(chapter)) return null;
 
   const [meta] = await sql<{ chapter_count: number }[]>`select chapter_count from books where id = ${book.id}`;
   if (!meta || chapter < 1 || chapter > meta.chapter_count) return null;
@@ -60,7 +62,7 @@ async function loadChapter(slug: string, chapter: number): Promise<ChapterData |
            w.text as web,
            a.text as amh,
            ev.verse as amh_end,
-           a.source_id is not null as amh_restored
+           (a.source_id is not null and ${book.testament} = 'NT') as amh_restored
     from verses v
     left join verse_texts w on w.ord = v.ord and w.translation_code = 'WEB'
     left join verse_texts a on a.ord = v.ord and a.translation_code = 'AMH'
@@ -97,13 +99,16 @@ async function loadChapter(slug: string, chapter: number): Promise<ChapterData |
   const neighbour = async (dir: 1 | -1) => {
     const [n] = await sql<{ slug: string; chapter: number; name: string }[]>`
       select b.slug, v.chapter, b.name from verses v join books b on b.id = v.book_id
-      where b.testament = 'NT' and ${dir === 1 ? sql`v.ord > ${rows[rows.length - 1].ord}` : sql`v.ord < ${rows[0].ord}`}
+      where ${dir === 1 ? sql`v.ord > ${rows[rows.length - 1].ord}` : sql`v.ord < ${rows[0].ord}`}
       order by v.ord ${dir === 1 ? sql`asc` : sql`desc`} limit 1`;
-    return n ? { slug: n.slug, chapter: n.chapter, label: `${n.name} ${n.chapter}` } : null;
+    return n ? { slug: n.slug, chapter: n.chapter, label: chapterLabel(n.name, n.chapter) } : null;
   };
-  const [prev, next] = await Promise.all([neighbour(-1), neighbour(1)]);
+  const [[prev, next], [titleRow]] = await Promise.all([
+    Promise.all([neighbour(-1), neighbour(1)]),
+    sql<{ title: string }[]>`select title from chapter_titles where book_id = ${book.id} and chapter = ${chapter}`,
+  ]);
 
-  return { book, chapter, chapterCount: meta.chapter_count, verses, prev, next };
+  return { book, chapter, chapterCount: meta.chapter_count, verses, title: titleRow?.title ?? null, prev, next };
 }
 
 export interface LexiconEntry {
@@ -127,9 +132,10 @@ async function loadLemma(strongs: string): Promise<LexiconEntry | null> {
   return row ?? null;
 }
 
-export function getNtBooks() {
-  return cachedContent(["books"], ["books"], async () =>
-    [...(await sql<{ slug: string; name: string; osis: string; chapter_count: number }[]>`
-      select slug, name, osis, chapter_count from books where testament = 'NT' order by id`)],
+/** Every book of the Bible, in order (Old Testament first). */
+export function getBooks() {
+  return cachedContent(["books-all"], ["books"], async () =>
+    [...(await sql<{ slug: string; name: string; osis: string; chapter_count: number; testament: "OT" | "NT" }[]>`
+      select slug, name, osis, chapter_count, testament from books order by id`)],
   );
 }

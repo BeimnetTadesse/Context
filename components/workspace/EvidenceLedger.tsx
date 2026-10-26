@@ -1,6 +1,7 @@
 import { Dot } from "@/components/ui";
 import type { StudyData } from "@/lib/data/study";
 import { LABEL_INFO, LABELS } from "@/lib/labels";
+import { chapterLabel } from "@/lib/bible/books";
 
 /** The chapter's claims by label as one bar, plus whether any are verified and how many were withheld. */
 export function EvidenceLedger({ study, bookName, chapter }: { study: StudyData; bookName: string; chapter: number }) {
@@ -13,7 +14,7 @@ export function EvidenceLedger({ study, bookName, chapter }: { study: StudyData;
         ))}
       </div>
       <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[0.68rem] uppercase tracking-widest text-muted">
-        <span className="text-ink-2">{bookName} {chapter} ·</span>
+        <span className="text-ink-2">{chapterLabel(bookName, chapter)} ·</span>
         {LABELS.filter((l) => study.ledger[l]).map((l) => (
           <span key={l} className="flex items-center gap-1.5"><Dot label={l} size={6} />{study.ledger[l]} {LABEL_INFO[l].short}</span>
         ))}

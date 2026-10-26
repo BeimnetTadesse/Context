@@ -1,6 +1,7 @@
 import "server-only";
 import { sql } from "@/lib/db";
 import { cachedContent } from "@/lib/cache";
+import { chapterName } from "@/lib/bible/books";
 
 // Data for the cross-reference arc diagram: the whole Bible as a line of 1,189 chapters, and an arc from this
 // chapter to every place OpenBible.info's readers link it to (references with at least one positive vote).
@@ -58,8 +59,8 @@ export function getChapterArcs(bookId: number, chapter: number): Promise<Chapter
       return {
         from: r.from_verse,
         to: b.offset + r.chapter - 1,
-        ref: `${b.name} ${r.chapter}:${r.verse}${end}`,
-        href: b.testament === "NT" ? `/study/${b.slug}/${r.chapter}#v${r.verse}` : null,
+        ref: `${chapterName(b.name)} ${r.chapter}:${r.verse}${end}`,
+        href: `/study/${b.slug}/${r.chapter}#v${r.verse}`,
         votes: r.votes,
       };
     });

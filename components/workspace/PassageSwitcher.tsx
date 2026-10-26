@@ -8,6 +8,7 @@ export interface NtBook {
   slug: string;
   name: string;
   chapter_count: number;
+  testament?: "OT" | "NT";
 }
 
 /** ⌘K "Go to passage": type a reference or browse books → chapters. Mounted only while open. */
@@ -31,8 +32,7 @@ export function PassageSwitcher({ books, onClose }: { books: NtBook[]; onClose: 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const ref = parseRef(query);
-    if (!ref) return setError("Try a reference like “John 1” or “Rom 8:28”.");
-    if (ref.book.testament !== "NT") return setError(`${ref.book.name} is in the Old Testament — Context studies the New Testament.`);
+    if (!ref) return setError("Try a reference like “Genesis 1”, “Ps 23” or “Rom 8:28”.");
     const book = books.find((b) => b.slug === ref.book.slug);
     if (!book || ref.chapter > book.chapter_count) return setError(`${ref.book.name} has ${book?.chapter_count} chapters.`);
     go(ref.book.slug, ref.chapter, ref.verseStart);
@@ -60,7 +60,7 @@ export function PassageSwitcher({ books, onClose }: { books: NtBook[]; onClose: 
               setError("");
               setPicked(null);
             }}
-            placeholder="John 1, Rom 8:28, Eph 3…"
+            placeholder="Genesis 1, Ps 23, John 1, Rom 8:28…"
             className="w-full bg-transparent font-serif text-3xl text-ink placeholder:text-muted/60 focus:outline-none"
           />
           {error && <p className="mt-2 text-sm text-accent">{error}</p>}
@@ -86,17 +86,28 @@ export function PassageSwitcher({ books, onClose }: { books: NtBook[]; onClose: 
               </div>
             </>
           ) : (
-            <div className="grid grid-cols-2 gap-x-6 sm:grid-cols-3">
-              {filtered.map((b) => (
-                <button
-                  key={b.slug}
-                  onClick={() => (b.chapter_count === 1 ? go(b.slug, 1) : setPicked(b))}
-                  className="flex items-baseline justify-between border-b border-rule py-2.5 text-left font-serif text-lg hover:text-accent"
-                >
-                  {b.name}
-                  <span className="font-mono text-xs text-muted">{b.chapter_count}</span>
-                </button>
-              ))}
+            <div className="space-y-6">
+              {(["OT", "NT"] as const).map((t) => {
+                const list = filtered.filter((b) => (b.testament ?? "NT") === t);
+                if (!list.length) return null;
+                return (
+                  <div key={t}>
+                    <p className="eyebrow mb-1 !text-[0.62rem] text-muted">{t === "OT" ? "Old Testament" : "New Testament"}</p>
+                    <div className="grid grid-cols-2 gap-x-6 sm:grid-cols-3">
+                      {list.map((b) => (
+                        <button
+                          key={b.slug}
+                          onClick={() => (b.chapter_count === 1 ? go(b.slug, 1) : setPicked(b))}
+                          className="flex items-baseline justify-between border-b border-rule py-2.5 text-left font-serif text-lg hover:text-accent"
+                        >
+                          {b.name}
+                          <span className="font-mono text-xs text-muted">{b.chapter_count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

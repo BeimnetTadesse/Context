@@ -6,18 +6,20 @@ import { useRouter } from "next/navigation";
 import { parseRef, studyPath } from "@/lib/bible/refs";
 import type { NtBook } from "./workspace/PassageSwitcher";
 
-export function StudyIndex({ groups }: { groups: { name: string; books: NtBook[] }[] }) {
+type Group = { name: string; books: NtBook[] };
+
+export function StudyIndex({ testaments }: { testaments: { name: string; groups: Group[] }[] }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [error, setError] = useState("");
   const [open, setOpen] = useState<string | null>(null);
-  const all = groups.flatMap((g) => g.books);
+  const all = testaments.flatMap((t) => t.groups.flatMap((g) => g.books));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const ref = parseRef(q);
     const book = ref && all.find((b) => b.slug === ref.book.slug);
-    if (!ref || !book) return setError("Try a New Testament reference like “John 1” or “Rom 8:28”.");
+    if (!ref || !book) return setError("Try a reference like “Genesis 1”, “Ps 23” or “Rom 8:28”.");
     if (ref.chapter > book.chapter_count) return setError(`${book.name} has ${book.chapter_count} chapters.`);
     router.push(studyPath(book, ref.chapter) + (ref.verseStart ? `#v${ref.verseStart}` : ""));
   };
@@ -33,7 +35,7 @@ export function StudyIndex({ groups }: { groups: { name: string; books: NtBook[]
               setError("");
             }}
             autoFocus
-            placeholder="Ephesians 3, John 1:1–18, Rom 8…"
+            placeholder="Genesis 1, Psalm 23, John 1:1–18, Rom 8…"
             className="w-full bg-transparent font-serif text-3xl placeholder:text-muted/50 focus:outline-none"
           />
           <button className="shrink-0 rounded-xl bg-ink px-5 py-2.5 text-paper">Study →</button>
@@ -42,7 +44,10 @@ export function StudyIndex({ groups }: { groups: { name: string; books: NtBook[]
       </form>
 
       <div className="mt-16 space-y-14">
-        {groups.map((g) => (
+        {testaments.map((t) => (
+          <div key={t.name} className="space-y-12">
+            <h2 className="border-b border-ink pb-3 font-serif text-3xl">{t.name}</h2>
+        {t.groups.map((g) => (
           <section key={g.name}>
             <p className="eyebrow mb-4 text-muted">{g.name}</p>
             <div className="grid grid-cols-2 gap-x-8 sm:grid-cols-3 lg:grid-cols-4">
@@ -72,6 +77,8 @@ export function StudyIndex({ groups }: { groups: { name: string; books: NtBook[]
               ))}
             </div>
           </section>
+        ))}
+          </div>
         ))}
       </div>
     </>

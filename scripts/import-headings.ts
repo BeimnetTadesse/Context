@@ -1,4 +1,4 @@
-// Imports the Berean Standard Bible's section headings (\s1 lines in its USFM) for the New Testament.
+// Imports the Berean Standard Bible's section headings (\s1 lines in its USFM) for the whole Bible.
 // Each heading starts at the next verse after it. Idempotent: replaces the BSB headings.
 // Needs data/raw/engbsb (npm run data:fetch). Run: npm run db:headings
 import { config } from "dotenv";
@@ -6,7 +6,7 @@ config({ path: ".env.local" });
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";
-import { NT_BOOKS } from "../lib/bible/books";
+import { BOOKS } from "../lib/bible/books";
 
 const sql = postgres(process.env.DATABASE_URL!, { onnotice: () => {}, max: 1 });
 const DIR = join(process.cwd(), "data/raw/engbsb");
@@ -35,11 +35,11 @@ async function main() {
   if (!bsb) throw new Error("BSB source missing: run npm run db:translations first.");
   const files = readdirSync(DIR);
   const verses = await sql<{ book_id: number; chapter: number; verse: number; ord: number }[]>`
-    select v.book_id, v.chapter, v.verse, v.ord from verses v join books b on b.id = v.book_id where b.testament = 'NT' order by v.ord`;
+    select book_id, chapter, verse, ord from verses order by ord`;
 
   const rows: { source_id: number; book_id: number; chapter: number; start_ord: number; title: string }[] = [];
   let unplaced = 0;
-  for (const book of NT_BOOKS) {
+  for (const book of BOOKS) {
     const file = files.find((f) => f.includes(`-${book.usfm}engbsb.usfm`));
     if (!file) throw new Error(`no BSB file for ${book.usfm}`);
     for (const h of parseHeadings(readFileSync(join(DIR, file), "utf8"))) {
