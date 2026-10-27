@@ -46,7 +46,13 @@ export function StudyIndex({ testaments }: { testaments: { name: string; groups:
       <div className="mt-16 space-y-14">
         {testaments.map((t) => (
           <div key={t.name} className="space-y-12">
-            <h2 className="border-b border-ink pb-3 font-serif text-3xl">{t.name}</h2>
+            <div className="border-b border-ink pb-3">
+              <h2 className="font-serif text-3xl">{t.name}</h2>
+              <p className="eyebrow mt-1 text-muted">
+                {t.groups.reduce((n, g) => n + g.books.length, 0)} books ·{" "}
+                {t.groups.reduce((n, g) => n + g.books.reduce((c, b) => c + b.chapter_count, 0), 0).toLocaleString()} chapters
+              </p>
+            </div>
         {t.groups.map((g) => (
           <section key={g.name}>
             <p className="eyebrow mb-4 text-muted">{g.name}</p>
