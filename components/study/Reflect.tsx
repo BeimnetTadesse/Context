@@ -193,7 +193,7 @@ function CheckYourOwn() {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="e.g. Paul wrote this from a Roman prison."
+          placeholder={book.testament === "OT" ? "e.g. This was written while Israel was in exile." : "e.g. Paul wrote this from a Roman prison."}
           className="flex-1 rounded-xl border border-rule bg-paper px-4 py-3 font-serif text-lg focus:border-ink focus:outline-none"
         />
         <button disabled={busy} className="rounded-xl bg-ink px-5 py-3 text-paper disabled:opacity-50">
