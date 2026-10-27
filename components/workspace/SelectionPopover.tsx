@@ -6,6 +6,7 @@ import { postJson, useStudy } from "@/components/study/context";
 import { HIGHLIGHTS, type ChapterHighlights, type HighlightColor } from "@/lib/highlights";
 import { docToText, isEmptyDoc, withQuote, type NoteDoc } from "@/lib/notes/doc";
 import type { VerseNote } from "@/components/notes/VerseNotes";
+import { chapterLabel } from "@/lib/bible/books";
 
 // Loaded only when a reader chooses "Add note".
 const NoteEditor = dynamic(() => import("@/components/notes/NoteEditor"), {
@@ -181,7 +182,7 @@ export function SelectionPopover({
   }, [open]);
 
   if (!sel) return null;
-  const ref = `${book.name} ${chapter}${sel.verse ? `:${sel.verse}` : ""}`;
+  const ref = `${chapterLabel(book.name, chapter)}${sel.verse ? `:${sel.verse}` : ""}`;
   const close = () => {
     setSel(null);
     window.getSelection()?.removeAllRanges();

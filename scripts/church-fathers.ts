@@ -81,4 +81,6 @@ export const FATHER_NOTES: Record<string, string> = {
 };
 
 /** HistoricalChristianFaith book names → Context's book slugs ("1corinthians" → "1-corinthians"). */
-export const bookSlug = (name: string) => name.replace(/^([123])/, "$1-");
+export const bookSlug = (name: string) => (name === "songofsolomon" ? "song-of-songs" : name.replace(/^([123])/, "$1-"));
+/** …and back: Context's slug → the database's book name. */
+export const hcfBook = (slug: string) => (slug === "song-of-songs" ? "songofsolomon" : slug.replace("-", ""));

@@ -44,6 +44,7 @@
   --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
   --font-ethiopic: var(--font-ethiopic), "Noto Serif Ethiopic", serif;
+  --font-hebrew: var(--font-hebrew-face), "SBL Hebrew", "Noto Serif Hebrew", serif;
 }
 
 html {

@@ -13,23 +13,35 @@ export interface ApiBibleChapter {
   fumsToken: string | null;
 }
 
-interface Node {
+export interface Node {
   name?: string;
   type: string;
   text?: string;
-  attrs?: { verseId?: string; style?: string };
+  attrs?: { verseId?: string; style?: string; number?: string };
   items?: Node[];
 }
 
-/** Collect the text of each verse from API.Bible's JSON (text nodes carry their verseId). */
-function collect(nodes: Node[], out: Record<number, string>) {
+/**
+ * Collect the text of each verse from API.Bible's JSON, in reading order. Most text nodes carry their verseId, but
+ * in poetry (e.g. NLT Genesis 1:27, the Psalms) the lines after a verse marker don't: those belong to the verse
+ * whose marker came last.
+ */
+export function collect(nodes: Node[], out: Record<number, string>, state: { verse: number | null } = { verse: null }) {
   for (const n of nodes) {
-    if (n.type === "text" && n.attrs?.verseId && n.text) {
-      const verse = Number(n.attrs.verseId.split(".")[2]);
-      if (verse) out[verse] = (out[verse] ?? "") + n.text;
+    if (n.name === "verse") {
+      // The verse marker: its number starts the verse; its own items are just the printed number.
+      const v = parseInt(String(n.attrs?.number ?? n.attrs?.verseId?.split(".")[2] ?? ""), 10);
+      if (v) state.verse = v;
+      continue;
     }
-    // Skip verse-number tags; recurse into paragraphs and character styles (e.g. words of Jesus).
-    if (n.items && n.name !== "verse") collect(n.items, out);
+    if (n.type === "text" && n.text) {
+      const v = n.attrs?.verseId ? Number(n.attrs.verseId.split(".")[2]) : state.verse;
+      if (v) {
+        out[v] = (out[v] ?? "") + n.text;
+        state.verse = v;
+      }
+    }
+    if (n.items) collect(n.items, out, state);
   }
 }
 

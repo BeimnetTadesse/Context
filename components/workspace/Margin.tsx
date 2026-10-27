@@ -20,6 +20,8 @@ interface Lexicon {
   gloss: string | null;
   definition: string[];
   occurrences: number;
+  source: string;
+  license: string;
 }
 
 interface Cited {
@@ -48,6 +50,7 @@ export function LexiconCard({ word, onClose }: { word: GreekWord; onClose: () =>
   const [entry, setEntry] = useState<Lexicon | null>(null);
   const [failed, setFailed] = useState(false);
   const missing = !word.strongs || failed;
+  const hebrew = word.strongs?.startsWith("H") ?? false;
 
   useEffect(() => {
     if (!word.strongs) return;
@@ -67,7 +70,7 @@ export function LexiconCard({ word, onClose }: { word: GreekWord; onClose: () =>
         <p className="eyebrow text-accent">Word</p>
         <button onClick={onClose} className="text-sm text-muted hover:text-ink" aria-label="Close word">✕</button>
       </div>
-      <p className="font-serif text-3xl">{word.surface}</p>
+      <p className={hebrew ? "font-hebrew text-4xl" : "font-serif text-3xl"} dir={hebrew ? "rtl" : undefined}>{word.surface}</p>
       <p className="mt-1 text-sm text-muted">
         <span className="font-serif italic">{word.translit}</span> · here: “{word.gloss}”
         {word.morph && <span className="ml-1 font-mono text-[0.7rem]">{word.morph}</span>}
@@ -77,10 +80,10 @@ export function LexiconCard({ word, onClose }: { word: GreekWord; onClose: () =>
       {entry && (
         <div className="mt-4 border-t border-rule pt-4">
           <p className="font-serif text-xl">
-            {entry.lemma} <span className="text-base italic text-muted">{entry.translit}</span>
+            <span className={hebrew ? "font-hebrew text-2xl" : undefined}>{entry.lemma}</span> <span className="text-base italic text-muted">{entry.translit}</span>
           </p>
           <p className="mt-1 text-sm text-ink-2">
-            {entry.gloss} · <span className="font-mono text-xs">{entry.strongs}</span> · {entry.occurrences}× in the SBL text
+            {entry.gloss} · <span className="font-mono text-xs">{entry.strongs}</span> · {entry.occurrences}× in the {hebrew ? "Hebrew Bible" : "SBL text"}
           </p>
           <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1 text-[0.9rem] leading-relaxed text-ink-2">
             {entry.definition.map((p, i) => <p key={i}>{p}</p>)}
@@ -89,7 +92,9 @@ export function LexiconCard({ word, onClose }: { word: GreekWord; onClose: () =>
             <span className="eyebrow mr-2 !text-[0.62rem] text-accent">Caution</span>A lexicon gives a word’s range of meaning.
             Which sense applies here is decided by context, not by the dictionary.
           </p>
-          <p className="mt-3 font-mono text-[0.68rem] text-muted">[Abbott-Smith] via STEP Bible · public domain</p>
+          <p className="mt-3 font-mono text-[0.68rem] text-muted">
+            {hebrew ? "[BDB] Brown-Driver-Briggs, abridged (STEP TBESH)" : "[Abbott-Smith]"} via STEP Bible · {entry.license}
+          </p>
         </div>
       )}
     </div>

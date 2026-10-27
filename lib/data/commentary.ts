@@ -67,7 +67,7 @@ async function loadCommentary(bookId: number, chapter: number, from: number, to:
       id: r.id, range, startVerse: r.sv, text: r.text,
       refs: refRows.filter((x) => x.note_id === r.id).map((x) => ({
         raw: x.raw,
-        href: x.testament === "NT" ? `/study/${x.slug}/${x.c}#v${x.v}` : null,
+        href: x.slug ? `/study/${x.slug}/${x.c}#v${x.v}` : null,
         label: `${x.name} ${x.c}:${x.v}`,
       })),
     });

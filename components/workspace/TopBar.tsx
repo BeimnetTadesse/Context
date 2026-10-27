@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Wordmark } from "@/components/ui";
 import { AccountButton, type ViewerInfo } from "@/components/AccountButton";
 import { STEPS, type StepKey } from "@/lib/steps";
+import { chapterName } from "@/lib/bible/books";
 
 /** Sticky top bar: passage (opens the switcher), step progress, notebook, account; step pills on phones. */
 export function TopBar({
@@ -39,7 +40,7 @@ export function TopBar({
           title="Go to passage (⌘K)"
         >
           <span className="font-serif text-lg sm:text-xl">
-            {bookName} {chapter}
+            {chapterName(bookName)} {chapter}
           </span>
           <span className="hidden font-mono text-[0.7rem] tracking-widest text-muted sm:inline">
             {first}–{last} · {translationLabel}

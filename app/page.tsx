@@ -202,8 +202,8 @@ export default async function Landing() {
       <footer className="border-t border-rule">
         <div className="mx-auto max-w-7xl px-5 py-10 text-sm text-muted sm:px-10">
           Texts: World English Bible (public domain) · Amharic Bible © 1962, 2003 United Bible Societies, used with the
-          permission terms of the Bible Society of Ethiopia · SBL Greek New Testament (CC BY 4.0) · Greek data and lexicon
-          from STEP Bible (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY).{" "}
+          permission terms of the Bible Society of Ethiopia · SBL Greek New Testament (CC BY 4.0) · Hebrew Bible (Leningrad
+          Codex) · Greek and Hebrew data and lexicons from STEP Bible (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY).{" "}
           <Link href="/sources" className="underline underline-offset-4 hover:text-ink">Source library →</Link> ·{" "}
           <Link href="/audit" className="underline underline-offset-4 hover:text-ink">How references are checked →</Link> ·{" "}
           <Link href="/copyright" className="underline underline-offset-4 hover:text-ink">Copyright</Link> ·{" "}

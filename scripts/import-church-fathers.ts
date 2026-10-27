@@ -14,10 +14,10 @@ async function main() {
   if (!existsSync(FILE)) throw new Error("Run `npm run data:fathers` first.");
   const quotes: FatherQuote[] = JSON.parse(readFileSync(FILE, "utf8"));
 
-  // Verse → ord for the whole New Testament. A quote whose verse Context doesn't have (a different numbering)
+  // Verse → ord for the whole Bible. A quote whose verse Context doesn't have (a different numbering)
   // falls back to the last verse of that chapter; one whose chapter doesn't exist is skipped.
   const verses = await sql<{ slug: string; id: number; chapter: number; verse: number; ord: number }[]>`
-    select b.slug, b.id, v.chapter, v.verse, v.ord from verses v join books b on b.id = v.book_id where b.testament = 'NT'`;
+    select b.slug, b.id, v.chapter, v.verse, v.ord from verses v join books b on b.id = v.book_id`;
   const ords = new Map(verses.map((v) => [`${v.slug} ${v.chapter}:${v.verse}`, v]));
   const lastInChapter = new Map<string, (typeof verses)[number]>();
   for (const v of verses) {
@@ -57,7 +57,7 @@ async function main() {
 
   await sql`
     insert into sources (key, title, author, publisher, year, url, tier, source_type, orientation, license, can_display, notes, written, tradition)
-    values ('Fathers', 'The Church Fathers on the New Testament (to AD 750)', 'Chrysostom, Augustine, Tertullian, Cyril of Alexandria and others',
+    values ('Fathers', 'The Church Fathers on the Bible (to AD 750)', 'Chrysostom, Augustine, Tertullian, Cyril of Alexandria and others',
       'HistoricalChristianFaith Commentaries Database', '2nd–8th centuries', 'https://github.com/HistoricalChristianFaith/Commentaries-Database',
       2, 'Church Fathers · tradition', 'patristic', 'Public domain', true,
       'Exact quotes, filed by verse. Only old public-domain translations are shown: Aquinas’s Catena Aurea (1841–45), the Ante-Nicene and Nicene and Post-Nicene Fathers (1885–1900), and a few other 19th-century translations. AI-made and modern translations are left out.',

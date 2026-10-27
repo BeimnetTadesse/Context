@@ -1,9 +1,9 @@
-// Downloads public-domain / CC BY-SA commentaries for the NT from the Free Use Bible API (bible.helloao.org)
+// Downloads public-domain / CC BY-SA commentaries for the whole Bible from the Free Use Bible API (bible.helloao.org)
 // into data/raw/commentaries/<id>/<BOOK>/<chapter>.json. Cached: re-running only fetches what's missing.
 // Run: npm run data:commentaries
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { NT_BOOKS } from "../lib/bible/books";
+import { BOOKS } from "../lib/bible/books";
 
 export const COMMENTARIES = ["john-calvin", "matthew-henry", "john-gill", "adam-clarke", "jamieson-fausset-brown", "tyndale"];
 const API = "https://bible.helloao.org/api/c";
@@ -23,7 +23,7 @@ async function main() {
   const jobs: { id: string; book: string; chapter: number | "books" }[] = [];
   for (const id of COMMENTARIES) {
     jobs.push({ id, book: "_", chapter: "books" });
-    for (const b of NT_BOOKS) for (let c = 1; c <= b.chapters; c++) jobs.push({ id, book: b.usfm, chapter: c });
+    for (const b of BOOKS) for (let c = 1; c <= b.chapters; c++) jobs.push({ id, book: b.usfm, chapter: c });
   }
 
   let done = 0, fetched = 0, missing = 0;

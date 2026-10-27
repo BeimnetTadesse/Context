@@ -1,4 +1,4 @@
-import { json, ntChapter } from "@/lib/api";
+import { json, bibleChapter } from "@/lib/api";
 import { getFatherCounts, getFathers } from "@/lib/data/fathers";
 import { sql } from "@/lib/db";
 
@@ -6,7 +6,7 @@ import { sql } from "@/lib/db";
 // plus how many Fathers speak to each verse of the chapter.
 export async function GET(req: Request, ctx: RouteContext<"/api/fathers/[book]/[chapter]">) {
   const { book, chapter } = await ctx.params;
-  const target = ntChapter(book, chapter);
+  const target = bibleChapter(book, chapter);
   if (!target) return json({ error: "not_found" }, 404);
   const [{ last }] = await sql<{ last: number | null }[]>`
     select max(verse) as last from verses where book_id = ${target.book.id} and chapter = ${target.chapter}`;

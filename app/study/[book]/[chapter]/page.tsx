@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Workspace } from "@/components/workspace/Workspace";
-import { getChapter, getNtBooks } from "@/lib/data/chapter";
+import { chapterLabel } from "@/lib/bible/books";
+import { getBooks, getChapter } from "@/lib/data/chapter";
 import { chapterHighlights } from "@/lib/data/highlights";
 import type { VerseNote } from "@/components/notes/VerseNotes";
 import { getStudy } from "@/lib/data/study";
@@ -16,13 +17,13 @@ import { authConfigured, curatorMode, currentViewer } from "@/lib/user";
 export async function generateMetadata(props: PageProps<"/study/[book]/[chapter]">): Promise<Metadata> {
   const { book, chapter } = await props.params;
   const data = await getChapter(book, Number(chapter));
-  return { title: data ? `${data.book.name} ${data.chapter} · Context` : "Context" };
+  return { title: data ? `${chapterLabel(data.book.name, data.chapter)} · Context` : "Context" };
 }
 
 export default async function StudyPage(props: PageProps<"/study/[book]/[chapter]">) {
   const { book, chapter } = await props.params;
   const { step } = await props.searchParams;
-  const [data, books, viewer] = await Promise.all([getChapter(book, Number(chapter)), getNtBooks(), currentViewer()]);
+  const [data, books, viewer] = await Promise.all([getChapter(book, Number(chapter)), getBooks(), currentViewer()]);
   const userId = viewer.id;
   if (!data) notFound();
 

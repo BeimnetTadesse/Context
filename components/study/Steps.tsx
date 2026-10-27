@@ -53,7 +53,9 @@ export function ObserveStep({ verses }: { verses: VerseRow[] }) {
             ))}
           </ul>
           <p className="mt-2 text-right text-xs text-muted">
-            Section headings: <span className="font-mono">[BSB]</span> Berean Standard Bible, written by its translators · public domain
+            {study.sections.every((s) => s.source === "WEB")
+              ? <>Stanza headings: <span className="font-mono">[WEB]</span> World English Bible (the letters of the Hebrew alphabet that begin each stanza) · public domain</>
+              : <>Section headings: <span className="font-mono">[BSB]</span> Berean Standard Bible, written by its translators · public domain</>}
           </p>
         </>
       ) : (

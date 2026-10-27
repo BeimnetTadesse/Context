@@ -5,7 +5,7 @@ import { AiBusyError, AiRateLimitError, AiRefusedError, AiUnavailableError } fro
 
 export const json = (data: unknown, status = 200) => Response.json(data, { status });
 
-export { ntChapter } from "@/lib/bible/books";
+export { bibleChapter, ntChapter } from "@/lib/bible/books";
 
 /** Turn AI failures into honest, user-facing messages. The Ai*Error messages are written by us, for readers. */
 export function aiError(e: unknown) {

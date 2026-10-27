@@ -85,12 +85,14 @@ export default async function Copyright() {
         </ul>
 
         <h2 className="mt-12 font-serif text-2xl">Amharic</h2>
-        <p className="mt-2 font-serif text-lg">Amharic Bible (1962), New Testament</p>
+        <p className="mt-2 font-serif text-lg">Amharic Bible (1962)</p>
         <p className="mt-1 text-sm leading-relaxed text-ink-2">{AMHARIC_1962_NOTICE}</p>
         <p className="mt-2 text-sm leading-relaxed text-ink-2">
-          The eBible.org e-text is missing some verses. Those (marked ◦ in the reader) were restored from{" "}
+          The New Testament is the eBible.org e-text; the verses it is missing (marked ◦ in the reader) and the whole Old
+          Testament come from{" "}
           <a href="https://www.wordproject.org/bibles/am/index.htm" className="text-accent underline underline-offset-4" target="_blank" rel="noreferrer">WordProject’s copy</a>{" "}
-          of the same 1962 translation, which it makes available for non-profit use.
+          of the same 1962 translation, which it makes available for non-profit use. Old Testament chapters whose verses
+          don’t line up with the English are not shown until they are checked.
         </p>
 
         <h2 className="mt-12 font-serif text-2xl">Public domain</h2>
@@ -100,10 +102,12 @@ export default async function Copyright() {
           <li>King James Version (KJV) — public domain outside the United Kingdom (Crown letters patent apply within the UK)</li>
           <li>American Standard Version (ASV) and Young’s Literal Translation (YLT) — eBible.org</li>
         </ul>
-        <h2 className="mt-12 font-serif text-2xl">Greek, lexicon and commentaries</h2>
+        <h2 className="mt-12 font-serif text-2xl">Greek, Hebrew, lexicons and commentaries</h2>
         <p className="mt-2 text-ink-2">
           SBL Greek New Testament (CC BY 4.0) · Greek tagging and Abbott-Smith lexicon from STEP Bible, Tyndale House,
-          Cambridge (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY) · Tyndale Open Study Notes ©
+          Cambridge (www.STEPBible.org, CC BY 4.0) · Hebrew Bible (Leningrad Codex, public domain) with Hebrew and Aramaic
+          tagging (TAHOT) and the brief Hebrew lexicon abridged from Brown-Driver-Briggs (TBESH) from STEP Bible, Tyndale
+          House, Cambridge (www.STEPBible.org, CC BY 4.0) · Cross-references from OpenBible.info (CC BY) · Tyndale Open Study Notes ©
           Tyndale House Publishers (CC BY-SA 4.0) · Commentaries of Calvin, Henry, Gill, Clarke and Jamieson-Fausset-Brown
           (public domain), via the Free Use Bible API · The International Standard Bible Encyclopedia (1915) and Easton’s Bible Dictionary (1897), public domain, for book introductions and overviews. Details in the <Link href="/sources" className="text-accent underline underline-offset-4">source library</Link>.
         </p>

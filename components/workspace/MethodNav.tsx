@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { STEPS, type StepKey } from "@/lib/steps";
 import { versionInfo, type ReadPrefs } from "@/lib/versions";
+import { chapterName } from "@/lib/bible/books";
 
 /** Desktop left column: the seven steps, the passage being read, and (children) the reader's notes. */
 export function MethodNav({
@@ -12,12 +13,15 @@ export function MethodNav({
   last,
   verseCount,
   prefs,
+  originalLabel = "Greek · SBLGNT",
   children,
 }: {
   step: StepKey;
   onStep: (s: StepKey) => void;
   bookName: string;
   chapter: number;
+  /** What the interlinear is, when it's on: "Greek · SBLGNT" or "Hebrew · WLC". */
+  originalLabel?: string;
   first: number;
   last: number;
   verseCount: number;
@@ -56,11 +60,11 @@ export function MethodNav({
         <div className="mt-3 border-t border-rule pt-3">
           <p className="eyebrow mb-1 text-muted">Passage</p>
           <p className="font-serif text-xl">
-            {bookName} {chapter}:{first}–{last}
+            {chapterName(bookName)} {chapter}:{first}–{last}
           </p>
           <p className="mt-1 text-sm leading-relaxed text-muted">
             {verseCount} verses ·{" "}
-            {prefs.greek ? "Greek · SBLGNT" : [prefs.primary, ...prefs.compare].map((c) => versionInfo(c).short).join(" · ")}
+            {prefs.greek ? originalLabel : [prefs.primary, ...prefs.compare].map((c) => versionInfo(c).short).join(" · ")}
           </p>
           <p className="mt-1.5 font-mono text-[0.68rem] text-muted">⌘K go to · 1–7 steps</p>
         </div>

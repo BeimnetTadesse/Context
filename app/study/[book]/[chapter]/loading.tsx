@@ -2,13 +2,13 @@
 
 import { useParams } from "next/navigation";
 import { Wordmark } from "@/components/ui";
-import { bookBySlug } from "@/lib/bible/books";
+import { bookBySlug, chapterName } from "@/lib/bible/books";
 
 // Shown the moment a chapter link is clicked, while the server prepares the chapter. Without it the old page
 // stays on screen with no sign anything is happening, and readers click again.
 export default function LoadingChapter() {
   const { book, chapter } = useParams<{ book: string; chapter: string }>();
-  const name = bookBySlug(book)?.name ?? "";
+  const name = chapterName(bookBySlug(book)?.name ?? "");
 
   return (
     <div className="min-h-dvh" aria-busy="true">

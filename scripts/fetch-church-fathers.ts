@@ -1,4 +1,4 @@
-// Downloads the Church Fathers' comments on the New Testament and keeps only the old public-domain
+// Downloads the Church Fathers' comments on the Bible (66 books) and keeps only the old public-domain
 // translations (see scripts/church-fathers.ts for the rules and why).
 //   · quotes:  HistoricalChristianFaith/Commentaries-Database (its latest SQLite release)
 //   · sources: HistoricalChristianFaith/Writings-Database (the full works, to read each one's translation note)
@@ -7,9 +7,9 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { NT_BOOKS } from "../lib/bible/books";
+import { BOOKS } from "../lib/bible/books";
 import {
-  bookSlug, EXCLUDED_CATEGORIES, EXCLUDED_WORKS, FATHER_NOTES, LAST_YEAR, MACHINE_NOTE, translationOf, TRUSTED_LINKS,
+  bookSlug, hcfBook, EXCLUDED_CATEGORIES, EXCLUDED_WORKS, FATHER_NOTES, LAST_YEAR, MACHINE_NOTE, translationOf, TRUSTED_LINKS,
 } from "./church-fathers";
 
 const OUT = join(process.cwd(), "data/raw/fathers");
@@ -42,7 +42,7 @@ async function main() {
     execFileSync("git", ["clone", "-q", "--depth", "1", "https://github.com/HistoricalChristianFaith/Writings-Database.git", WRITINGS], { stdio: "inherit" });
   }
 
-  const books = NT_BOOKS.map((b) => `'${b.slug.replace("-", "")}'`).join(",");
+  const books = BOOKS.map((b) => `'${hcfBook(b.slug)}'`).join(","); // the 66 books (no deuterocanonical ones)
   const rows: Row[] = JSON.parse(
     execFileSync("sqlite3", ["-json", DB, `
       select c.id, c.father_name as father, m.default_year as year, m.father_category as category,

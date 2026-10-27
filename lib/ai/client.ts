@@ -163,6 +163,12 @@ export async function generateStructured<S extends z.ZodType>(opts: {
             ${opts.input.slice(0, 20000)}, ${sql.json((opts.audit?.retrieved ?? null) as never)},
             ${sql.json(output as never)}, ${model}, ${opts.promptVersion ?? PROMPT_VERSION})
     returning id`;
+  // Keep the free database small: after 90 days a reader's question keeps only its row (so counts on /stats and
+  // the account page stay right), not its text. Study-generation runs (no user) are the studies' audit trail and stay.
+  if (opts.audit?.userId && Math.random() < 0.05) {
+    await sql`update ai_runs set input = null, retrieved = null, output = null, validation = null
+              where user_id is not null and created_at < now() - interval '90 days' and output is not null`;
+  }
   return { output: output as z.infer<S>, runId: run.id };
 }
 
