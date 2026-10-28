@@ -43,7 +43,7 @@ export async function chapterEvidence(
   const items: EvidenceItem[] = verses.map((v) => ({
     id: vid(book, chapter, v.verse),
     kind: "verse",
-    text: `${v.web}${v.greek ? `  [Greek: ${v.greek}]` : "  [not in the SBL Greek text]"}`,
+    text: book.testament === "OT" ? v.web : `${v.web}${v.greek ? `  [Greek: ${v.greek}]` : "  [not in the SBL Greek text]"}`,
     meta: { ord: v.ord },
   }));
 

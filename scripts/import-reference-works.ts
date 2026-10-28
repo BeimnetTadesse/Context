@@ -1,4 +1,4 @@
-// Imports ISBE (1915) and Easton's Bible Dictionary (1897) articles on the New Testament books as book
+// Imports ISBE (1915) and Easton's Bible Dictionary (1897) articles on the books of the Bible as book
 // introductions (next to the commentators'), so book overviews and the Context step can use them.
 // Additive and idempotent: replaces only these two sources' introductions. Run after `npm run data:reference`.
 // Run: npm run db:reference
@@ -7,7 +7,7 @@ config({ path: ".env.local" });
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";
-import { NT_BOOKS } from "../lib/bible/books";
+import { BOOKS } from "../lib/bible/books";
 import { ISBE_PAGES } from "./reference-works";
 
 const sql = postgres(process.env.DATABASE_URL!, { onnotice: () => {}, max: 1 });
@@ -15,7 +15,7 @@ const RAW = join(process.cwd(), "data/raw/reference");
 
 const decode = (s: string) =>
   s.replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&#39;|&rsquo;/g, "’").replace(/&lsquo;/g, "‘").replace(/&ldquo;/g, "“")
-    .replace(/&rdquo;/g, "”").replace(/&mdash;/g, "—").replace(/&ndash;/g, "–").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+    .replace(/&rdquo;/g, "”").replace(/&rArr;/g, "⇒").replace(/&mdash;/g, "—").replace(/&ndash;/g, "–").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 const clean = (s: string) => decode(s.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 
 /** One ISBE page → paragraphs (headings kept as their own short paragraphs; outline and bibliography dropped). */
@@ -53,6 +53,15 @@ function eastonEntries(): Map<string, { text: string; url: string }> {
 }
 
 const EASTON_TITLES: Record<string, string> = {
+  genesis: "Genesis", exodus: "Exodus, Book of", leviticus: "Leviticus", numbers: "Numbers, Book of", deuteronomy: "Deuteronomy",
+  joshua: "Joshua, The Book of", judges: "Judges, Book of", ruth: "Ruth The Book of", "1-samuel": "Samuel, Books of",
+  "2-samuel": "Samuel, Books of", "1-kings": "Kings, The Books of", "2-kings": "Kings, The Books of",
+  "1-chronicles": "Chronicles, Books of", "2-chronicles": "Chronicles, Books of", ezra: "Ezra, Book of", nehemiah: "Nehemiah, Book of",
+  esther: "Esther, Book of", job: "Job, Book of", psalms: "Psalms", proverbs: "Proverbs, Book of", ecclesiastes: "Ecclesiastes",
+  "song-of-songs": "Solomon, Song of", isaiah: "Isaiah, The Book of", jeremiah: "Jeremiah, Book of", lamentations: "Lamentations, Book of",
+  ezekiel: "Ezekiel, Book of", daniel: "Daniel, Book of", hosea: "Hosea, Prophecies of", joel: "Joel, Book of", amos: "Amos",
+  obadiah: "Obadiah, Book of", jonah: "Jonah, Book of", micah: "Micah, Book of", nahum: "Nahum, Book of",
+  habakkuk: "Habakkuk, Prophecies of", zephaniah: "Zephaniah", haggai: "Haggai, Book of", zechariah: "Zechariah", malachi: "Malachi, Prophecies of",
   matthew: "Matthew, Gospel according to", mark: "Mark, Gospel according to", luke: "Luke, Gospel according to",
   john: "John, Gospel of", acts: "Acts of the Apostles", romans: "Romans, Epistle to the",
   "1-corinthians": "Corinthians, First Epistle to the", "2-corinthians": "Corinthians, Second Epistle to the",
@@ -81,17 +90,17 @@ async function main() {
   const isbe = await source("ISBE", {
     title: "The International Standard Bible Encyclopedia", author: "James Orr (general editor) and contributors", publisher: "Howard-Severance Company",
     year: "1915", url: "https://www.internationalstandardbible.com/", tier: 3, type: "Encyclopedia", tradition: "Evangelical scholarship (1915)",
-    notes: "Articles on each New Testament book: authorship, date, setting, purpose, contents. Some Greek in the digital text was lost.",
+    notes: "Articles on each book of the Bible: authorship, date, setting, purpose, contents. Some Greek in the digital text was lost.",
   });
   const easton = await source("Easton", {
     title: "Easton’s Bible Dictionary", author: "M. G. Easton", publisher: "Thomas Nelson", year: "1897",
     url: "https://ccel.org/ccel/easton/ebd", tier: 6, type: "Bible dictionary", tradition: "Scottish Presbyterian",
-    notes: "Short articles on each New Testament book, via the Christian Classics Ethereal Library.",
+    notes: "Short articles on each book of the Bible, via the Christian Classics Ethereal Library.",
   });
 
   const entries = eastonEntries();
   let n = 0;
-  for (const book of NT_BOOKS) {
+  for (const book of BOOKS) {
     const isbeText = ISBE_PAGES[book.slug].flatMap((p) => isbePage(readFileSync(join(RAW, "isbe", `${p.replace("/", "_")}.html`), "utf8"))).join("\n\n");
     const eastonEntry = entries.get(EASTON_TITLES[book.slug]);
     if (!eastonEntry) console.warn(`no Easton entry for ${book.name}`);
@@ -106,7 +115,7 @@ async function main() {
       n++;
     }
   }
-  console.log(`imported ${n} book articles (ISBE + Easton) for ${NT_BOOKS.length} books`);
+  console.log(`imported ${n} book articles (ISBE + Easton) for ${BOOKS.length} books`);
   await sql.end();
 }
 

@@ -17,6 +17,7 @@
     "study:generate": "tsx --conditions=react-server scripts/generate.ts",
     "study:smoke": "tsx --conditions=react-server scripts/smoke-study.ts",
     "study:books": "tsx --conditions=react-server scripts/generate-books.ts",
+    "study:context": "tsx --conditions=react-server scripts/generate-context.ts",
     "study:notes": "tsx --conditions=react-server scripts/generate-notes.ts",
     "data:commentaries": "tsx scripts/fetch-commentaries.ts",
     "data:amharic": "tsx scripts/fetch-wordproject-amh.ts",

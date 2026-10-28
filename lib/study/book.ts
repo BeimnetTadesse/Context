@@ -25,7 +25,7 @@ const BookSchema = z.object({
 });
 type BookStudy = z.infer<typeof BookSchema>;
 
-const SYSTEM = `You are the research assistant inside Context, a Bible study workspace. You write the overview of one New Testament book: what it is about as a whole. You are not a pastor, theologian, or authority.
+const system = (book: Book) => `You are the research assistant inside Context, a Bible study workspace. You write the overview of one ${book.testament === "OT" ? "Old Testament (Hebrew Bible)" : "New Testament"} book: what it is about as a whole. You are not a pastor, theologian, or authority.
 
 You will receive an evidence pack: every verse of the book (V: ids), and introductions to the book (K: ids) from:
 - two reference works: the International Standard Bible Encyclopedia (ISBE, 1915, a multi-author scholarly encyclopedia; its excerpts carry their section heading) and Easton's Bible Dictionary (1897, a short popular dictionary);
@@ -41,7 +41,8 @@ Rules:
 - overview: 3–5 claims, at most one per topic (author, audience, purpose, structure).
 - themes: 3–5 major themes that run through the book. Each claim names where the theme appears and cites 2–4 representative verses from different chapters.
 - Say "the book says", "one reading holds". Never "the Bible means", "God is telling you", or "God wants you to".
-- Be concise: one or two sentences per claim.`;
+- Be concise: one or two sentences per claim.${book.testament === "OT" ? `
+- Old Testament books: traditional authorship (Moses for the Pentateuch, David for many psalms, Solomon for wisdom books, a prophet for his book) is a tradition or a scholarly view unless the book itself says so; attribute it and say where it is debated. ISBE (1915) argues against the critical theories of its day (e.g. the documentary hypothesis); report its arguments as its view, not as settled.` : ""}`;
 
 /** Every verse of the book (WEB) and the commentators' book introductions, split into paragraphs. */
 async function bookEvidence(book: Book): Promise<EvidencePack> {
@@ -50,7 +51,24 @@ async function bookEvidence(book: Book): Promise<EvidencePack> {
     join verse_texts w on w.ord = v.ord and w.translation_code = 'WEB'
     where v.book_id = ${book.id} order by v.ord`;
   const items: EvidenceItem[] = verses.map((v) => ({ id: `V:${book.osis}.${v.chapter}.${v.verse}`, kind: "verse", text: v.web, meta: { ord: v.ord } }));
+  const intro = await introEvidence(book);
+  items.push(...intro.items);
+  return {
+    items,
+    byId: new Map(items.map((i) => [i.id, i])),
+    verseText: new Map(verses.map((v) => [v.ord, v.web])),
+    ordById: new Map(verses.map((v) => [`V:${book.osis}.${v.chapter}.${v.verse}`, v.ord])),
+    commentaryText: intro.commentaryText,
+    academic: intro.academic,
+  };
+}
 
+/**
+ * The book's introductions (ISBE, Easton and the commentators'), as K:intro ids: paragraphs taken evenly from start
+ * to end within a budget per source, so authorship, date, purpose and contents are all represented.
+ */
+export async function introEvidence(book: Book, scale = 1) {
+  const items: EvidenceItem[] = [];
   const intros = await sql<{ source_id: number; key: string; author: string; written: string; tradition: string; tier: number; text: string }[]>`
     select i.source_id, s.key, s.author, s.written, s.tradition, s.tier, i.text
     from book_intros i join sources s on s.id = i.source_id where i.book_id = ${book.id} order by s.written`;
@@ -59,7 +77,7 @@ async function bookEvidence(book: Book): Promise<EvidencePack> {
   // Space per source, so no single voice dominates: ISBE's long scholarly articles get the most.
   const BUDGET: Record<string, number> = { ISBE: 9000, Easton: 3000 };
   for (const intro of intros) {
-    const budget = BUDGET[intro.key] ?? 5000;
+    const budget = (BUDGET[intro.key] ?? 5000) * scale;
     // Paragraphs with the section heading they sit under (short lines are headings, e.g. "II. Place and Date").
     let heading = "";
     const paras: { heading: string; text: string }[] = [];
@@ -77,20 +95,13 @@ async function bookEvidence(book: Book): Promise<EvidencePack> {
       const text = p.length > 900 ? p.slice(0, 900).replace(/\s+\S*$/, "") + "…" : p;
       const id = `K:intro.${intro.source_id}.${i}`;
       const where = paras[i].heading && intro.key === "ISBE" ? ` (section “${paras[i].heading}”)` : "";
-      items.push({ id, kind: "commentary", text: `${intro.author} (${intro.written}, ${intro.tradition}), introduction to ${book.name}${where}: ${text}`, meta: { key: intro.key } });
+      items.push({ id, kind: "commentary", text: `${intro.author} (${intro.written}, ${intro.tradition}), introduction to ${book.name}${where}: ${text}`, meta: { key: intro.key, range: "(introduction to the book)" } });
       commentaryText.set(id, text);
       if (intro.tier >= 2 && intro.tier <= 4) academic.add(id);
       used += text.length;
     }
   }
-  return {
-    items,
-    byId: new Map(items.map((i) => [i.id, i])),
-    verseText: new Map(verses.map((v) => [v.ord, v.web])),
-    ordById: new Map(verses.map((v) => [`V:${book.osis}.${v.chapter}.${v.verse}`, v.ord])),
-    commentaryText,
-    academic,
-  };
+  return { items, commentaryText, academic };
 }
 
 export async function generateBookOverview(book: Book) {
@@ -98,7 +109,7 @@ export async function generateBookOverview(book: Book) {
   const { output, runId } = await generateStructured({
     kind: "book_overview",
     schema: BookSchema,
-    system: SYSTEM,
+    system: system(book),
     input: `Book: ${book.name}.\n\n<evidence_pack>\n${renderEvidence(pack)}\n</evidence_pack>\n\nWrite the overview of this book.`,
     effort: "high",
     maxTokens: 12000,

@@ -1,5 +1,5 @@
 // Prepare book overviews (what a whole book is about) from the command line.
-//   npm run study:books -- --all          every NT book without a current overview (resumable)
+//   npm run study:books -- --all          every book without a current overview (resumable)
 //   npm run study:books -- Ephesians      specific books (by name)
 // Like study:generate: retries the same book on rate limits, stops cleanly when the daily quota runs out.
 import { config } from "dotenv";
@@ -8,7 +8,7 @@ config({ path: ".env.local" });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
-  const { NT_BOOKS } = await import("../lib/bible/books");
+  const { BOOKS } = await import("../lib/bible/books");
   const { generateBookOverview, BOOK_PROMPT_VERSION } = await import("../lib/study/book");
   const { AiRateLimitError, AiBusyError } = await import("../lib/ai/client");
   const { sql } = await import("../lib/db");
@@ -16,8 +16,8 @@ async function main() {
   const current = new Set((await sql<{ book_id: number }[]>`select book_id from book_overviews where prompt_version = ${BOOK_PROMPT_VERSION}`).map((r) => r.book_id));
   const named = process.argv.slice(2).filter((a) => !a.startsWith("--")).map((a) => a.toLowerCase());
   const targets = process.argv.includes("--all")
-    ? NT_BOOKS.filter((b) => !current.has(b.id))
-    : NT_BOOKS.filter((b) => named.includes(b.name.toLowerCase()) || named.includes(b.slug));
+    ? BOOKS.filter((b) => !current.has(b.id))
+    : BOOKS.filter((b) => named.includes(b.name.toLowerCase()) || named.includes(b.slug));
   console.log(`${targets.length} books to prepare`);
 
   let done = 0;
@@ -44,7 +44,7 @@ async function main() {
     await sleep(20_000); // stay under the per-minute token limit
   }
   const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from book_overviews where prompt_version = ${BOOK_PROMPT_VERSION}`;
-  console.log(`done this run: ${done}. books with a current overview: ${n}/27`);
+  console.log(`done this run: ${done}. books with a current overview: ${n}/${BOOKS.length}`);
   await sql.end();
 }
 main();
