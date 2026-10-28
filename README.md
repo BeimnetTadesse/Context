@@ -1,20 +1,26 @@
 # Context
 
-**Understand before you interpret.** A study workspace for the New Testament: the text first, then its structure, history, language and the range of credible interpretation, with every claim labelled and every source shown.
+**Understand before you interpret.** A study workspace for the whole Bible: the text first, then its structure, history, language and the range of credible interpretation, with every claim labelled and every source shown.
 
-Live: **https://context-black.vercel.app** · Product #2 of *3 Products in 30 Days*.
+**https://www.context1.io**
 
 ## What it does
 
-- **All 260 NT chapters**, each with a prepared study, in seven steps and in this order: Read · Observe · Context · Language · Connections · Interpretations · Reflect.
+- **All 66 books and 1,189 chapters**, studied in seven steps and in this order: Read · Observe · Context · Language · Connections · Interpretations · Reflect.
+  - **New Testament (260 chapters):** every step, with a prepared study for each chapter.
+  - **Old Testament (929 chapters):** reading, structure, commentators, Church Fathers, cross-references and the Hebrew interlinear. The AI-prepared steps (Context, Language, Interpretations, Reflect) are still being prepared and say so.
 - **Many versions, side by side.**
-  - Stored locally: WEB, BSB, KJV, ASV, YLT and the Amharic 1962 (1954 E.C.) Bible.
-  - Fetched live, display only: NIV, NLT, NASB 2020, the Amplified Bible (AMP), The Passion Translation (TPT) and the New Amharic Standard Version (NASV).
-  - A Greek interlinear (SBLGNT); tap any word for its lexicon entry.
+  - Stored locally: WEB, BSB, KJV, ASV, YLT and the Amharic 1962 (1954 E.C.) Bible (all of the NT; 913 of 929 OT chapters, the rest marked as missing rather than shown misaligned).
+  - Fetched live, display only: NIV, NLT, NASB 2020, the Amplified Bible (AMP), The Passion Translation (TPT, NT only) and the New Amharic Standard Version (NASV).
+  - The original languages: a Greek interlinear for the NT (SBLGNT) and a Hebrew and Aramaic interlinear for the OT (Leningrad Codex), read right to left. Tap any word for its lexicon entry.
   - Compare up to three versions at once. Words that differ are highlighted, but only between texts in the same script.
+  - Psalm titles appear above verse 1, as in the Hebrew.
+- **Structure from the translators, not the AI:** Observe divides each chapter by the Berean Standard Bible's section headings (Psalm 119 by its 22 Hebrew-alphabet stanzas, from the WEB).
+- **The book in view:** each book's overview sits beside the Context step, and a cross-reference arc diagram of the whole Bible sits beside Connections (tap it for the full view).
+- **Tap a verse** for its notes, commentary and the original-language words, in the right-hand column.
 - **Six provenance labels** on every claim: Explicit · Inference · Historical · Scholarly · Tradition · Personal.
-- **Commentators on every verse:** Calvin, Matthew Henry, Gill, Clarke, Jamieson-Fausset-Brown and the Tyndale Open Study Notes, with book introductions.
-- **Church Fathers on every verse:** exact quotes from Chrysostom, Augustine, Tertullian, Cyril of Alexandria and 80 others (to AD 750), kept apart from the commentators and labelled Tradition. Only old public-domain translations are shown; AI-made and modern translations are left out.
+- **Commentators on every verse of the Bible:** Calvin, Matthew Henry, Gill, Clarke, Jamieson-Fausset-Brown and the Tyndale Open Study Notes, with book introductions.
+- **Church Fathers across the Bible:** exact quotes from Chrysostom, Augustine, Tertullian, Cyril of Alexandria and 80 others (to AD 750), kept apart from the commentators and labelled Tradition. Only old public-domain translations are shown; AI-made and modern translations are left out.
 - **Show me why** on every claim: claim → evidence → source (tier, orientation, locator) → how it was produced.
 - **Ask:** select any phrase or type a question. Answers come only from the chapter's evidence, are labelled and cited piece by piece, or say honestly "not enough evidence".
 - **Text or Assumption?:** a quiz that asks you to label statements before revealing the answer, plus a checker for your own statements.
@@ -29,7 +35,7 @@ open-licensed data ──► Postgres ──► evidence pack (V: verses, L: lex
                                                    K: commentary paragraphs, C: verified claims)
                                           │
                                           ▼
-                       Gemini (JSON-schema structured output)
+              Gemini or Claude (JSON-schema structured output)
                                           │
                                           ▼
                      validator (lib/ai/validate.ts: pure, unit-tested)
@@ -55,7 +61,7 @@ open-licensed data ──► Postgres ──► evidence pack (V: verses, L: lex
       scholarly/historical claims need a checked tier 2–4 source
 ```
 
-Every model call is logged in `ai_runs`: the evidence it saw, the prompt version, and what the validator removed. The `/audit` page shows the review results for every chapter.
+Every model call is logged in `ai_runs`: the evidence it saw, the prompt version, and what the validator removed. The `/audit` page shows the review results for every chapter. A reader's own questions keep only their row after 90 days, not their text. `/method`, `/provenance` and `/principles` explain the approach in plain words.
 
 **Licensed text never reaches the AI.** NIV, NLT, NASB, AMP, TPT and NASV are fetched when a reader chooses them, cached for at most a day, never stored in the database, and can't be copied. Selecting them offers only "Ask about verse N", which sends the reference, never the wording.
 
@@ -65,13 +71,16 @@ Every model call is logged in `ai_runs`: the evidence it saw, the prompt version
 |---|---|---|
 | World English Bible, BSB, KJV, ASV, YLT (eBible.org) | English texts | Public domain |
 | Amharic Bible 1962 / 1954 E.C. (Bible Society of Ethiopia / UBS, via eBible.org) | Amharic NT | Non-commercial use with the full copyright statement |
-| WordProject copy of the same Amharic Bible | 842 verses missing from the eBible e-text, marked ◦ in the reader | Non-profit use permitted by WordProject |
+| WordProject copy of the same Amharic Bible | Amharic OT (each chapter checked for verse alignment), and 842 NT verses missing from the eBible e-text, marked ◦ in the reader | Non-profit use permitted by WordProject |
 | NIV, NLT, NASB 2020 via [API.Bible](https://api.bible) | Licensed English versions | Non-commercial; display only; usage reported (FUMS) |
 | New Amharic Standard Version 2024 (Biblica) via the [YouVersion Platform](https://platform.youversion.com) | Modern Amharic | Non-commercial; display only; no AI use |
 | Amplified Bible (Lockman Foundation) and The Passion Translation 2020 NT (BroadStreet Publishing) via the YouVersion Platform | Licensed English versions | Non-commercial; display only |
 | SBL Greek New Testament | Greek text | CC BY 4.0 |
 | STEP Bible TAGNT, TBESG (Tyndale House, Cambridge) | Greek tagging, glosses, Abbott-Smith lexicon | CC BY 4.0 |
-| OpenBible.info cross-references | Connections | CC BY |
+| Leningrad Codex, tagged in STEP Bible TAHOT (Tyndale House, Cambridge) | Hebrew and Aramaic text, glosses, grammar | Text public domain; tagging CC BY 4.0 |
+| STEP Bible TBESH (abridged Brown-Driver-Briggs) | Hebrew lexicon | CC BY 4.0 |
+| Berean Standard Bible section headings; WEB stanza and Psalm titles | Observe structure, Psalm titles | Public domain |
+| OpenBible.info cross-references | Connections, both testaments | CC BY |
 | Calvin, Henry, Gill, Clarke, JFB (via the Free Use Bible API) | Commentators | Public domain |
 | Tyndale Open Study Notes | Commentators | CC BY-SA 4.0 |
 | International Standard Bible Encyclopedia (1915), via internationalstandardbible.com | Book overviews and introductions | Public domain |
@@ -84,7 +93,7 @@ Copyrighted scholarship (BDAG, Louw-Nida, modern commentaries) is never displaye
 
 ## Stack
 
-Next.js 16 (App Router) · PostgreSQL (raw SQL via `postgres`; Neon in production) · Gemini API (JSON-schema output, retries and fallback models; free tier) · Auth.js (Google sign-in) · Tailwind 4 · Vitest · Vercel.
+Next.js 16 (App Router) · PostgreSQL (raw SQL via `postgres`; Neon in production, free plan) · Gemini API or Claude API (JSON-schema output, retries and fallback models) · Auth.js (Google sign-in) · Tailwind 4 · Vitest · Vercel.
 
 Chapter pages are served from Next's data cache, so most visits don't touch the database.
 
@@ -98,9 +107,12 @@ cp .env.example .env.local   # set DATABASE_URL and GEMINI_API_KEY (free at aist
 npm run db:migrate
 npm run db:import       # once, on an empty database: verses, Greek words, lexicon, cross-references
 npm run db:translations # BSB, KJV, ASV, YLT
+npm run db:hebrew       # Hebrew interlinear and lexicon (OT)
+npm run db:headings && npm run db:titles   # Observe section headings, Psalm titles
+npm run db:xrefs-ot     # cross-references from OT verses
 npm run data:commentaries && npm run db:commentaries
-npm run data:amharic && npm run db:amharic   # restore the missing Amharic verses
-npm run data:reference && npm run db:reference   # ISBE and Easton articles on each book
+npm run data:amharic && npm run db:amharic && npm run db:amharic-ot   # missing NT verses, then the Amharic OT
+npm run data:reference && npm run db:reference   # ISBE and Easton articles on each book (after db:commentaries)
 npm run data:fathers && npm run db:fathers         # Church Fathers quotes (needs git and sqlite3)
 npm run dev             # http://localhost:3000
 ```
@@ -112,16 +124,16 @@ Optional keys in `.env.local` (see `.env.example`):
 
 Without these keys the app still runs, just without those features.
 
-**`npm run db:import` empties the database first.** Never run it on a database that has studies or user notes; use the additive `db:translations`, `db:commentaries` and `db:amharic` instead.
+**`npm run db:import` empties the database first.** Never run it on a database that has studies or user notes; use the additive `db:*` imports above instead.
 
 ### Useful commands
 
-- `npm test`: unit tests (reference parser, validator, verse numbering, text parsers, reading view, diff).
+- `npm test`: unit tests (reference parser, validator, verse numbering, text parsers, Hebrew and heading imports, reading view, diff).
 - `npm run study:books -- --all`: prepare the 27 book overviews (resumable).
 - `npm run study:generate -- "Eph 3" "John 1"`: prepare chapter studies. `-- --all` regenerates every chapter whose prompt version is out of date (resumable).
 - `CONTEXT_CURATOR=1` in `.env.local`: shows the **Verify** button (local curation only; never in production).
-- `bash scripts/sync-neon.sh`: back up production, migrate it, and copy content across while keeping user data.
-- `npm run cache:warm`: pre-load all 260 chapters after a deploy (add `-- <url>` for a preview deployment).
+- `bash scripts/sync-neon.sh`: back up production, migrate it, and copy content across while keeping user data. Run it (with any new migrations) **before** merging a change that needs them.
+- `npm run cache:warm -- https://www.context1.io`: pre-load all 1,189 chapters after a deploy (or pass a preview URL).
 
 ## Project map
 
@@ -135,9 +147,10 @@ lib/data/             cached queries the pages read
 lib/versions.ts       every version, defined once: source, provider id, publisher, script
 lib/licensed.ts       fetches licensed versions (API.Bible, YouVersion), renumbered to Context's verse order
 lib/notices.ts        copyright statements that must appear word for word
-app/                  landing, /study, workspace, /notebook, /sources, /copyright, /audit, /privacy, /api/*
-components/           workspace shell, steps, claims and "Show me why", version toolbar
-components/workspace/read/   the Read step's three views (Greek, compare, flowing) and their text logic
+app/                  landing, /study, workspace, /notebook, /sources, /copyright, /audit, /method, /provenance,
+                      /principles, /stats, /privacy, /api/*
+components/           workspace shell, steps, claims and "Show me why", version toolbar, cross-reference arcs
+components/workspace/read/   the Read step's three views (Greek or Hebrew interlinear, compare, flowing) and their text logic
 ```
 
 ## Contributing and license
