@@ -11,11 +11,17 @@ const BASE = "https://api.youversion.com/v1";
 export async function fetchYouVersionChapter(bibleId: number, usfm: string, chapter: number): Promise<YvChapter | null> {
   const key = process.env.YVP_APP_KEY;
   if (!key) return null;
-  const r = await fetch(`${BASE}/bibles/${bibleId}/passages/${usfm}.${chapter}?format=html`, {
-    headers: { "X-YVP-App-Key": key },
-    next: { revalidate: 86400 },
-  });
-  if (!r.ok) return null;
+  // The API sometimes stalls on a chapter it does have: give up on a slow answer and ask once more.
+  let r: Response | null = null;
+  for (let attempt = 0; attempt < 2 && !r?.ok; attempt++) {
+    r = await fetch(`${BASE}/bibles/${bibleId}/passages/${usfm}.${chapter}?format=html`, {
+      headers: { "X-YVP-App-Key": key },
+      next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(12000),
+    }).catch(() => null);
+    if (r && r.status < 500 && r.status !== 429) break; // a real answer (text, or "no such chapter")
+  }
+  if (!r?.ok) return null;
   const { content } = (await r.json()) as { content: string };
   return parsePassageHtml(content);
 }

@@ -13,7 +13,7 @@ const ORDER = GROUPS.flatMap((g) => g.codes);
  * The main-version picker: a listbox in the page's own style (the system menu can't be styled). Keyboard: ↑ ↓ Home End
  * to move, Enter or Space to choose, Esc to close, and typing a version's first letters jumps to it.
  */
-export function VersionSelect({ value, onChange }: { value: VersionCode; onChange: (v: VersionCode) => void }) {
+export function VersionSelect({ value, onChange, missing = [], bookName }: { value: VersionCode; onChange: (v: VersionCode) => void; missing?: VersionCode[]; bookName?: string }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<VersionCode>(value);
   const root = useRef<HTMLDivElement>(null);
@@ -26,6 +26,7 @@ export function VersionSelect({ value, onChange }: { value: VersionCode; onChang
     setOpen(true);
   };
   const choose = (c: VersionCode) => {
+    if (missing.includes(c) && c !== value) return; // this version doesn't have the book
     setOpen(false);
     if (c !== value) onChange(c);
     root.current?.querySelector("button")?.focus();
@@ -115,6 +116,7 @@ export function VersionSelect({ value, onChange }: { value: VersionCode; onChang
                 {g.codes.map((c) => {
                   const v = versionInfo(c);
                   const selected = c === value;
+                  const absent = missing.includes(c);
                   return (
                     <li
                       key={c}
@@ -122,16 +124,17 @@ export function VersionSelect({ value, onChange }: { value: VersionCode; onChang
                       data-code={c}
                       role="option"
                       aria-selected={selected}
+                      aria-disabled={absent || undefined}
                       onMouseEnter={() => setActive(c)}
                       onClick={() => choose(c)}
-                      className={`flex cursor-pointer items-start gap-3 rounded-xl px-3 py-2 ${c === active ? "bg-paper-2" : ""}`}
+                      className={`flex items-start gap-3 rounded-xl px-3 py-2 ${absent ? "cursor-not-allowed opacity-50" : "cursor-pointer"} ${c === active ? "bg-paper-2" : ""}`}
                     >
                       <span className={`w-12 shrink-0 pt-px font-mono text-[0.72rem] ${selected ? "text-accent" : "text-ink-2"} ${isEthiopic(c) ? "font-ethiopic !text-[0.8rem]" : ""}`}>
                         {v.short}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm leading-snug text-ink">{v.name}</span>
-                        <span className="block truncate text-xs text-muted">{v.note}</span>
+                        <span className="block truncate text-xs text-muted">{absent ? `Doesn’t include ${bookName}` : v.note}</span>
                       </span>
                       {selected && (
                         <svg viewBox="0 0 12 12" width="12" height="12" className="mt-1 shrink-0 text-accent" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

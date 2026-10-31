@@ -8,7 +8,8 @@ import type { PhraseMark } from "./marks";
 export interface ReadViewProps {
   verses: VerseRow[];
   licensed: Record<string, LicensedText>;
-  licensedFailed: string[];
+  /** Why a licensed version shows no text here: not in this book, or the provider didn't answer. */
+  unavailable: Partial<Record<string, string>>;
   /** Provenance underlines for a verse in a version (WEB only). */
   markFor: (v: VerseRow, code: VersionCode) => PhraseMark[];
   trail: string | null;

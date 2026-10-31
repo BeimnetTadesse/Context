@@ -34,7 +34,7 @@ import { ReadStep, type PhraseMark } from "./ReadStep";
 import { VersionToolbar } from "./VersionToolbar";
 import { LicensedNotices, useLicensed } from "./Licensed";
 import { AMHARIC_1962_NOTICE } from "@/lib/notices";
-import type { ReadPrefs } from "@/lib/versions";
+import { versionHasBook, versionInfo, type ReadPrefs } from "@/lib/versions";
 import type { ChapterHighlights, HighlightColor } from "@/lib/highlights";
 import { SelectionPopover } from "./SelectionPopover";
 import { StudyNotePopover, StudyNotesKey } from "./read/StudyNote";
@@ -130,7 +130,13 @@ export function Workspace({
       .catch(() => setHighlights(before));
   };
   const shownVersions = prefs.greek ? [] : [prefs.primary, ...prefs.compare];
-  const licensed = useLicensed(shownVersions, data.book.slug, data.chapter);
+  // A version that doesn't have this book (TPT for most of the Old Testament) isn't fetched; the reader is told why.
+  const notInBook = shownVersions.filter((c) => !versionHasBook(c, data.book.usfm));
+  const licensed = useLicensed(shownVersions.filter((c) => !notInBook.includes(c)), data.book.slug, data.chapter);
+  const unavailable = Object.fromEntries([
+    ...licensed.failed.map((c) => [c, `${versionInfo(c).short} is unavailable right now.`]),
+    ...notInBook.map((c) => [c, `${versionInfo(c).name} doesn’t include ${data.book.name}.`]),
+  ]);
   const [word, setWord] = useState<GreekWord | null>(null);
   const [switcher, setSwitcher] = useState(false);
   const [sheet, setSheet] = useState(false);
@@ -273,7 +279,7 @@ export function Workspace({
           {step === "read" ? (
             <>
               <div className="mt-8 flex flex-wrap items-start justify-between gap-4 border-y border-rule py-3">
-                <VersionToolbar prefs={prefs} onChange={changePrefs} greekAvailable={greekAvailable} language={language} />
+                <VersionToolbar prefs={prefs} onChange={changePrefs} greekAvailable={greekAvailable} language={language} bookUsfm={data.book.usfm} bookName={data.book.name} />
                 {SHOW_STUDY_NOTES && <ProvenanceToggle on={layer} onToggle={() => { setLayer(!layer); setStudyNote(null); }} hasLetters={letters.length > 0} primary={prefs.primary} greek={prefs.greek} />}
               </div>
               {SHOW_STUDY_NOTES && layer && letters.length > 0 && prefs.primary === "WEB" && !prefs.greek && <StudyNotesKey />}
@@ -322,7 +328,7 @@ export function Workspace({
                 {data.title && !prefs.greek && (
                   <p className="mb-5 font-serif text-[1.15rem] italic text-ink-2">{data.title}</p>
                 )}
-                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} onOpenNotes={openNotes} activeVerse={commentVerse} licensed={licensed.texts} licensedFailed={licensed.failed} highlights={highlights} noted={noted} notedText={notedText} />
+                <ReadStep verses={data.verses} prefs={prefs} selected={word} onSelectWord={selectWord} marks={marks} trail={trail} onVerse={selectVerse} onOpenNotes={openNotes} activeVerse={commentVerse} licensed={licensed.texts} unavailable={unavailable} highlights={highlights} noted={noted} notedText={notedText} />
                 <LicensedNotices codes={shownVersions} texts={licensed.texts} />
                 {/* The 1962 Amharic Bible's statement must be shown in full wherever its text is (the margin that
                     used to carry it is hidden). */}

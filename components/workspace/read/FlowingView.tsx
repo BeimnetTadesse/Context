@@ -4,13 +4,13 @@ import { coveredBy, paragraphs, spanEnd, textOf } from "./text";
 import type { ReadViewProps } from "./types";
 
 /** Flowing text in one version, in the translation's own paragraphs. */
-export function FlowingView({ verses, code, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes }: ReadViewProps & { code: VersionCode }) {
+export function FlowingView({ verses, code, licensed, unavailable, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes }: ReadViewProps & { code: VersionCode }) {
   const amh = code === "AMH";
   const ethiopic = isEthiopic(code);
   if (isLicensedVersion(code) && !licensed[code])
     return (
       <p className="font-sans italic text-muted">
-        {licensedFailed.includes(code) ? `${versionInfo(code).short} is unavailable right now.` : `Loading ${versionInfo(code).short}…`}
+        {unavailable[code] ?? `Loading ${versionInfo(code).short}…`}
       </p>
     );
   return (

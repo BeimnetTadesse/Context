@@ -1,10 +1,11 @@
 "use client";
 
-import { VERSIONS, isEthiopic, versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
+import { VERSIONS, isEthiopic, versionHasBook, versionInfo, type ReadPrefs, type VersionCode } from "@/lib/versions";
 import { VersionSelect } from "./VersionSelect";
 
 /** Choose the main version, up to two to compare, or the Greek interlinear. */
-export function VersionToolbar({ prefs, onChange, greekAvailable = true, language = "Greek" }: { prefs: ReadPrefs; onChange: (p: ReadPrefs) => void; greekAvailable?: boolean; language?: string }) {
+export function VersionToolbar({ prefs, onChange, greekAvailable = true, language = "Greek", bookUsfm, bookName }: { prefs: ReadPrefs; onChange: (p: ReadPrefs) => void; greekAvailable?: boolean; language?: string; bookUsfm: string; bookName: string }) {
+  const missing = VERSIONS.filter((v) => !versionHasBook(v.code, bookUsfm)).map((v) => v.code as VersionCode);
   const toggleCompare = (c: VersionCode) => {
     const has = prefs.compare.includes(c);
     const compare = has ? prefs.compare.filter((x) => x !== c) : [...prefs.compare, c].slice(-2);
@@ -18,6 +19,8 @@ export function VersionToolbar({ prefs, onChange, greekAvailable = true, languag
           <span id="main-version-label">Version</span>
           <VersionSelect
             value={prefs.primary}
+            missing={missing}
+            bookName={bookName}
             onChange={(primary) => onChange({ primary, compare: prefs.compare.filter((c) => c !== primary), greek: false })}
           />
         </div>
@@ -36,14 +39,16 @@ export function VersionToolbar({ prefs, onChange, greekAvailable = true, languag
         <span className="mr-1 text-sm text-muted">Compare</span>
         {VERSIONS.filter((v) => v.code !== prefs.primary).map((v) => {
           const on = prefs.compare.includes(v.code);
+          const absent = missing.includes(v.code) && !on;
           return (
             <button
               key={v.code}
               onClick={() => toggleCompare(v.code)}
+              disabled={absent}
               aria-pressed={on}
-              title={`${v.name} — ${v.note}`}
+              title={absent ? `${v.name} doesn’t include ${bookName}` : `${v.name} — ${v.note}`}
               className={`rounded-full border px-3 py-1 text-sm ${isEthiopic(v.code) ? "font-ethiopic" : ""} ${
-                on ? "border-[var(--l-scholarly)] bg-[var(--l-scholarly-bg)] text-ink" : "border-rule bg-card text-muted hover:border-ink hover:text-ink"
+                on ? "border-[var(--l-scholarly)] bg-[var(--l-scholarly-bg)] text-ink" : absent ? "cursor-not-allowed border-rule bg-card text-muted/50 line-through" : "border-rule bg-card text-muted hover:border-ink hover:text-ink"
               }`}
             >
               {on ? "✓ " : "+ "}
