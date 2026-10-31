@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Dot, LabelPill } from "@/components/ui";
 import type { ClaimView } from "@/lib/data/study";
 import type { VerseRow } from "@/lib/data/chapter";
+import { chapterLabel } from "@/lib/bible/books";
 import { ClaimCard, StatusMark, WhyDrawer } from "./Claim";
 import { useStudy } from "./context";
 import { PrepareStudy } from "./PrepareStudy";
@@ -261,12 +262,25 @@ function IntroFold({ intro: i }: { intro: { key: string; title: string; author: 
   );
 }
 
-export function LanguageStep() {
-  const { study, book } = useStudy();
+/** The chapter's weightiest words; onReadOriginal opens Read in the Greek (NT) or Hebrew (OT) interlinear. */
+export function LanguageStep({ language, onReadOriginal }: { language: string; onReadOriginal?: () => void }) {
+  const { study, book, chapter } = useStudy();
   const ot = book.testament === "OT";
   const claims = byStep(study.claims, "language");
   return (
     <div className="mt-10 space-y-6">
+      {onReadOriginal && (
+        <button
+          onClick={onReadOriginal}
+          className="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-rule bg-card px-6 py-4 text-left hover:border-ink"
+        >
+          <span>
+            <span className="block font-serif text-xl">Read {chapterLabel(book.name, chapter)} in {language}</span>
+            <span className="text-sm text-muted">Every word with its English gloss. Tap a word for its full lexicon entry.</span>
+          </span>
+          <span className="text-accent">{language} interlinear →</span>
+        </button>
+      )}
       {study.language.map((t) => (
         <article key={t.strongs} className="rounded-2xl border border-rule bg-card p-6 sm:p-8">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -288,8 +302,8 @@ export function LanguageStep() {
           )}
           {t.computed && (
             <p className="mt-4 text-sm text-muted">
-              Chosen because it repeats in this chapter but is uncommon in the {ot ? "OT" : "NT"}. Switch Read to{" "}
-              {ot ? "Hebrew" : "Greek"} and tap the word for its full lexicon entry.
+              Chosen because it repeats in this chapter but is uncommon in the {ot ? "OT" : "NT"}. Read it in {language}{" "}
+              and tap the word for its full lexicon entry.
             </p>
           )}
           {claims.filter((c) => c.strongs === t.strongs).map((c) => (
