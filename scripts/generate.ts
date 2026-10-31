@@ -1,6 +1,7 @@
 // Prepare chapter studies from the command line.
 //   npm run study:generate -- "Eph 3" "John 1"     specific chapters
-//   npm run study:generate -- --all                every NT chapter not yet ready (resumable)
+//   npm run study:generate -- --all                every chapter not yet ready (resumable)
+//   npm run study:generate -- --all --ot           only the Old Testament (or --nt)
 //   FORCE=1 npm run study:generate -- "Eph 3"      regenerate even if ready
 // Stops cleanly when the free quota is exhausted; run it again later and it continues where it left off.
 import { config } from "dotenv";
@@ -10,25 +11,26 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   const { parseRef } = await import("../lib/bible/refs");
-  const { NT_BOOKS } = await import("../lib/bible/books");
+  const { BOOKS } = await import("../lib/bible/books");
   const { generateChapterStudy, beginGeneration, failGeneration } = await import("../lib/study/generate");
   const { AiRateLimitError, AiBusyError, PROMPT_VERSION } = await import("../lib/ai/client");
   const { sql } = await import("../lib/db");
 
-  let targets: { book: (typeof NT_BOOKS)[number]; chapter: number }[] = [];
+  let targets: { book: (typeof BOOKS)[number]; chapter: number }[] = [];
   if (process.argv.includes("--all")) {
-    const counts = await sql<{ id: number; chapter_count: number }[]>`select id, chapter_count from books where testament = 'NT' order by id`;
+    const counts = await sql<{ id: number; chapter_count: number }[]>`select id, chapter_count from books order by id`;
+    const only = process.argv.includes("--ot") ? "OT" : process.argv.includes("--nt") ? "NT" : null;
     // "Up to date" = ready AND written with the current prompt version. Everything else is (re)prepared,
     // so a changed prompt reaches every chapter and an interrupted run resumes where it stopped.
     const ready = new Set((await sql<{ k: string }[]>`select book_id || '.' || chapter as k from chapter_studies where status = 'ready' and prompt_version = ${PROMPT_VERSION}`).map((r) => r.k));
-    for (const b of NT_BOOKS) {
+    for (const b of BOOKS.filter((b) => !only || b.testament === only)) {
       const n = counts.find((c) => c.id === b.id)?.chapter_count ?? 0;
       for (let c = 1; c <= n; c++) if (!ready.has(`${b.id}.${c}`)) targets.push({ book: b, chapter: c });
     }
   } else {
     for (const arg of process.argv.slice(2)) {
       const ref = parseRef(arg);
-      if (ref && ref.book.testament === "NT") targets.push({ book: ref.book, chapter: ref.chapter });
+      if (ref) targets.push({ book: ref.book, chapter: ref.chapter });
       else console.log(`skip ${arg}`);
     }
   }
@@ -72,7 +74,7 @@ async function main() {
     await sleep(20_000); // pace requests to stay under the per-minute token limit
   }
   const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from chapter_studies where status = 'ready'`;
-  console.log(`done this run: ${done}. chapters ready overall: ${n}/260`);
+  console.log(`done this run: ${done}. chapters ready overall: ${n}/1189`);
   await sql.end();
 }
 main();

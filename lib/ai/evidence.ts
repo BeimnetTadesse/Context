@@ -4,7 +4,7 @@ import type { Book } from "@/lib/bible/books";
 
 // The evidence pack: the ONLY material the model may use. Every item has an id the model must cite.
 //   V:Eph.3.6   a verse (WEB text + SBL Greek)
-//   L:G3466     a lexicon entry (Abbott-Smith via STEP)
+//   L:G3466     a lexicon entry (Abbott-Smith via STEP; L:H1254A for Hebrew, abridged BDB via STEP)
 //   X:12345     a cross-reference target (OpenBible), with its verse text
 //   C:42        an existing claim in the database (with its label and status)
 //   K:1234.0    a paragraph of a named commentator's note (Calvin, Henry, Gill, Clarke, JFB, Tyndale)
@@ -47,14 +47,17 @@ export async function chapterEvidence(
     meta: { ord: v.ord },
   }));
 
-  // Lexicon: the chapter's content words, weighted towards words repeated here but not everywhere in the NT.
+  // Lexicon: the chapter's content words, weighted towards words repeated here but not everywhere in the testament.
+  // Greek: drop articles, conjunctions, particles, prepositions, pronouns. Hebrew (prefixes split by "/"):
+  // keep words with a common noun, verb or adjective part, so names and particles drop out.
+  const ot = book.testament === "OT";
   if (opts.lexicon !== 0) {
     const lex = await sql<{ strongs: string; lemma: string; translit: string; gloss: string; definition: string | null; here: number; nt: number; verses: number[] }[]>`
       with here as (
         select g.strongs, count(*)::int as here, array_agg(distinct v.verse order by v.verse) as verses
         from greek_words g join verses v on v.ord = g.ord
         where g.ord between ${lo} and ${hi} and g.strongs is not null
-          and g.morph !~ '^(T-|CONJ|PREP|PRT|P-|R-|D-|ADV|COND)'
+          and ${ot ? sql`g.morph ~ '(^H|/)(Nc|V|A)'` : sql`g.morph !~ '^(T-|CONJ|PREP|PRT|P-|R-|D-|ADV|COND)'`}
         group by g.strongs
       )
       select l.strongs, l.lemma, l.translit, l.gloss, l.definition, h.here, h.verses,
@@ -67,7 +70,7 @@ export async function chapterEvidence(
       items.push({
         id: `L:${l.strongs}`,
         kind: "lexicon",
-        text: `${l.lemma} (${l.translit}) — gloss: ${l.gloss}. In this chapter ${l.here}× (verses ${l.verses.join(", ")}); ${l.nt}× in the NT. Abbott-Smith: ${def}`,
+        text: `${l.lemma} (${l.translit}) — gloss: ${l.gloss}. In this chapter ${l.here}× (verses ${l.verses.join(", ")}); ${l.nt}× in the ${ot ? "OT" : "NT"}. ${ot ? "BDB" : "Abbott-Smith"}: ${def}`,
         meta: { strongs: l.strongs, lemma: l.lemma },
       });
     }

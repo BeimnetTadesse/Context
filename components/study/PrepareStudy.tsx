@@ -49,8 +49,10 @@ export function PrepareStudy({ what }: { what: string }) {
     }
   };
 
-  // Old Testament studies aren't available yet (they need the Hebrew text and lexicon first): say so plainly.
+  // Old Testament: Language, Connections and Interpretations already show the lexicon, the cross-references, the
+  // Fathers and the commentators, so they need no notice. Elsewhere, say plainly that the step is still coming.
   if (book.testament === "OT") {
+    if (["language notes", "explained connections", "interpretation questions"].includes(what)) return null;
     return (
       <div className="mt-8 rounded-2xl border border-dashed border-rule bg-card/60 p-7">
         <p className="eyebrow mb-3 text-accent">Coming for the Old Testament</p>

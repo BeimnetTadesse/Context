@@ -360,7 +360,10 @@ export function Workspace({
           ) : step === "context" ? (
             <ContextStep chapterCount={data.chapterCount} />
           ) : step === "language" ? (
-            <LanguageStep />
+            <LanguageStep
+              language={language}
+              onReadOriginal={greekAvailable ? () => { changePrefs({ ...prefs, greek: true, compare: [] }); changeStep("read"); } : undefined}
+            />
           ) : step === "connections" ? (
             <ConnectionsStep />
           ) : step === "interpretations" ? (
