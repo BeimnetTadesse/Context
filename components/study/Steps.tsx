@@ -262,7 +262,8 @@ function IntroFold({ intro: i }: { intro: { key: string; title: string; author: 
 }
 
 export function LanguageStep() {
-  const { study } = useStudy();
+  const { study, book } = useStudy();
+  const ot = book.testament === "OT";
   const claims = byStep(study.claims, "language");
   return (
     <div className="mt-10 space-y-6">
@@ -275,7 +276,7 @@ export function LanguageStep() {
           <p className="mt-1 text-ink-2">
             <span className="font-serif italic">{t.translit}</span>
             <span className="ml-3">{t.gloss}</span>
-            <span className="ml-3 font-mono text-xs text-muted">{t.strongs} · {t.ntCount}× in the NT</span>
+            <span className="ml-3 font-mono text-xs text-muted">{t.strongs} · {t.ntCount}× in the {ot ? "OT" : "NT"}</span>
           </p>
           {t.meaningHere && <p className="mt-5 text-[1.05rem] leading-relaxed">{t.meaningHere}</p>}
           {t.translationNote && <p className="mt-3 leading-relaxed text-ink-2">{t.translationNote}</p>}
@@ -287,8 +288,8 @@ export function LanguageStep() {
           )}
           {t.computed && (
             <p className="mt-4 text-sm text-muted">
-              Chosen because it repeats in this chapter but is uncommon in the NT. Switch Read to Greek and tap the word
-              for its full lexicon entry.
+              Chosen because it repeats in this chapter but is uncommon in the {ot ? "OT" : "NT"}. Switch Read to{" "}
+              {ot ? "Hebrew" : "Greek"} and tap the word for its full lexicon entry.
             </p>
           )}
           {claims.filter((c) => c.strongs === t.strongs).map((c) => (

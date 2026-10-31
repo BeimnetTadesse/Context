@@ -28,7 +28,7 @@ export function EvidenceList({ items }: { items: EvidenceRef[] }) {
       {items.map((e) => (
         <li key={e.id} className="flex gap-3 text-[0.9rem]">
           <span className="shrink-0 rounded border border-rule bg-card px-1.5 font-mono text-[0.68rem] leading-5">
-            {e.kind === "verse" ? "WEB" : e.kind === "lexicon" ? "Abbott-Smith" : e.kind === "xref" ? "OpenBible" : "Claim"}
+            {e.kind === "verse" ? "WEB" : e.kind === "lexicon" ? (e.id.startsWith("L:H") ? "BDB" : "Abbott-Smith") : e.kind === "xref" ? "OpenBible" : "Claim"}
           </span>
           <span className="text-ink-2">{e.text}</span>
         </li>

@@ -162,7 +162,7 @@ async function loadStudy(book: Book, chapter: number, verses: VerseRow[]): Promi
       select g.strongs, count(*)::int as here, array_agg(distinct v.verse order by v.verse) as verses
       from greek_words g join verses v on v.ord = g.ord
       where g.ord between ${lo} and ${hi} and g.strongs is not null
-        and g.morph !~ '^(T-|CONJ|PREP|PRT|P-|R-|D-|ADV|COND)'
+        and ${book.testament === "OT" ? sql`g.morph ~ '(^H|/)(Nc|V|A)'` : sql`g.morph !~ '^(T-|CONJ|PREP|PRT|P-|R-|D-|ADV|COND)'`}
       group by g.strongs)
     select l.strongs, l.lemma, l.translit, l.gloss, h.verses, h.here,
            (select count(*)::int from greek_words x where x.strongs = l.strongs) as nt
@@ -177,7 +177,7 @@ async function loadStudy(book: Book, chapter: number, verses: VerseRow[]): Promi
           : [];
       })
     : lemmaStats
-        .filter((l) => l.here >= 2 && l.nt < 400)
+        .filter((l) => l.here >= 2 && l.nt < (book.testament === "OT" ? 1000 : 400))
         .sort((a, b) => b.here / Math.log(2 + b.nt) - a.here / Math.log(2 + a.nt))
         .slice(0, 6)
         .map((l) => ({ strongs: l.strongs, lemma: l.lemma, translit: l.translit, gloss: l.gloss, verses: l.verses, ntCount: l.nt,

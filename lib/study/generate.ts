@@ -50,7 +50,7 @@ const StudySchema = z.object({
 });
 export type Study = z.infer<typeof StudySchema>;
 
-const SYSTEM = `You are the research assistant inside Context, a Bible study workspace. You help a reader investigate a New Testament chapter. You are not a pastor, theologian, or authority.
+const NT_SYSTEM = `You are the research assistant inside Context, a Bible study workspace. You help a reader investigate a New Testament chapter. You are not a pastor, theologian, or authority.
 
 You will receive an evidence pack. Every statement you make must cite evidence ids from that pack and nothing else. You have no other sources: do not name commentators, scholars, dictionaries, manuscripts, or books that are not in the pack, and do not quote Scripture except by citing verse ids.
 
@@ -78,24 +78,38 @@ Rules:
 - Sizes: 3–5 sections; 4–7 margin notes (each with an exact quote from the WEB verse); 3–6 observations; 3–6 context claims; 3–5 language terms; 5–10 connections; 1–3 interpretation questions with 2 views each; 3–4 reflection prompts.
 - Be concise: one or two sentences per claim.`;
 
+// The Old Testament study is the Reflect step only: its other steps already show the translators' headings, the
+// lexicon, the cross-references, the Fathers and the commentators, and Context is prepared separately (lib/study/context.ts).
+const OT_SYSTEM = NT_SYSTEM
+  .replace("investigate a New Testament chapter", "investigate an Old Testament (Hebrew Bible) chapter")
+  .replace("Never claim a Greek word", "Never claim a Hebrew word")
+  .replace("the lexicon and the sense", "the lexicon (abridged Brown-Driver-Briggs) and the sense")
+  .replace(`"The same idea elsewhere in Paul", "Old Testament background"`, `"The same idea elsewhere in the prophets", "Taken up in the New Testament"`)
+  .replace(/- Context claims about authorship[^\n]*\n/, "")
+  .replace(/- Sizes: [^\n]*\n/, "- Fill only reflect_statements and reflect_prompts; return empty arrays for everything else (it is prepared separately).\n- Sizes: 4–6 Text or Assumption? statements; 3–4 reflection prompts.\n")
+  + `
+- This is the Hebrew Bible. Do not read the New Testament back into it as what the text says: where Christian readers see the chapter fulfilled or echoed in the New Testament, that is a connection (cite the X: id) or a tradition, not an explicit claim.
+- Text or Assumption? statements: where commentators read the chapter christologically and the text alone does not require it, that statement's expected_label is tradition or scholarly, not explicit.`;
+
 export async function generateChapterStudy(book: Book, chapter: number) {
-  const pack = await chapterEvidence(book, chapter, { lexicon: 20, xrefs: 30, claims: true, commentary: 24000 });
-  const input = `Chapter: ${book.name} ${chapter} (World English Bible, with SBL Greek).\n\n<evidence_pack>\n${renderEvidence(pack)}\n</evidence_pack>\n\nPrepare the study for this chapter.`;
+  const ot = book.testament === "OT";
+  const pack = await chapterEvidence(book, chapter, ot ? { lexicon: 8, xrefs: 10, claims: true, commentary: 14000 } : { lexicon: 20, xrefs: 30, claims: true, commentary: 24000 });
+  const input = `Chapter: ${book.name} ${chapter} (World English Bible${ot ? ", with the Hebrew lexicon" : ", with SBL Greek"}).\n\n<evidence_pack>\n${renderEvidence(pack)}\n</evidence_pack>\n\nPrepare the study for this chapter.`;
 
   const { output, runId } = await generateStructured({
     kind: "chapter_study",
     schema: StudySchema,
-    system: SYSTEM,
+    system: ot ? OT_SYSTEM : NT_SYSTEM,
     input,
     effort: "high",
-    maxTokens: 32000,
+    maxTokens: ot ? 12000 : 32000,
     audit: { bookId: book.id, chapter, retrieved: pack.items.map((i) => i.id) },
   });
 
   const issues: ValidationIssue[] = [];
   await saveStudy(book, chapter, output, pack, issues);
   await recordValidation(runId, { issues });
-  const review = await reviewChapter(book, chapter, pack);
+  const review = await reviewChapter(book, chapter, pack, ot ? "reflect" : undefined);
   await sql`update chapter_studies set audit = ${sql.json({ validatorIssues: issues.length, ...review } as never)}
             where book_id = ${book.id} and chapter = ${chapter}`;
   return { issues: issues.length, runId, review };
@@ -120,13 +134,14 @@ Judge ONLY whether the cited evidence supports the claim as worded:
 - unsupported: the evidence does not say this, the claim misattributes a view, or it adds facts not in the evidence.
 Be strict but fair. Do not use outside knowledge to rescue a claim; do not penalise a claim for being modest.`;
 
-/** Review a chapter's claims, or (chapter null) the book overview's claims. */
-export async function reviewChapter(book: Book, chapter: number | null, pack: EvidencePack) {
+/** Review a chapter's claims (or only one step's), or (chapter null) the book overview's claims. */
+export async function reviewChapter(book: Book, chapter: number | null, pack: EvidencePack, step?: string) {
   const claims = await sql<{ id: number; label: string; statement: string; step: string; cites: { kind: string; locator: string | null; quote: string | null; key: string }[] }[]>`
     select c.id, c.label, c.statement, c.step,
            coalesce(json_agg(json_build_object('kind', s.source_type, 'locator', ci.locator, 'quote', ci.quote, 'key', s.key)) filter (where ci.id is not null), '[]') as cites
     from claims c left join citations ci on ci.claim_id = c.id left join sources s on s.id = ci.source_id
     where c.book_id = ${book.id} and ${chapter === null ? sql`c.chapter is null and c.step = 'book'` : sql`c.chapter = ${chapter}`}
+      ${step ? sql`and c.step = ${step}` : sql``}
       and c.origin = 'ai_draft' and c.status = 'unverified'
     group by c.id order by c.id`;
   if (!claims.length) return { reviewed: 0, supported: 0, partial: 0, unsupported: 0 };
@@ -138,7 +153,7 @@ export async function reviewChapter(book: Book, chapter: number | null, pack: Ev
   const lines = claims.map((c, n) => {
     const ev = c.cites.map((x) => {
       if (x.key === "WEB") return `  - verse ${x.locator}: "${verseByRef.get(x.locator ?? "") ?? "?"}"`;
-      if (x.key === "Abbott-Smith") return `  - lexicon ${x.locator}: ${lexByStrongs.get(x.locator ?? "") ?? "?"}`;
+      if (x.key === "Abbott-Smith" || x.key === "BDB-TBESH") return `  - lexicon ${x.locator}: ${lexByStrongs.get(x.locator ?? "") ?? "?"}`;
       if (x.key === "OpenBible") return `  - cross-reference: ${x.locator}`;
       return `  - ${x.key} ${x.locator ?? ""}: "${x.quote ?? "(no quoted words)"}"`;
     });
@@ -182,7 +197,7 @@ export async function writeClaim(
     const [kind, ref] = [cite.slice(0, 1), cite.slice(2)];
     const item = pack.byId.get(cite);
     const source =
-      kind === "V" ? src.WEB : kind === "L" ? src["Abbott-Smith"] : kind === "X" ? src.OpenBible
+      kind === "V" ? src.WEB : kind === "L" ? src[ref.startsWith("H") ? "BDB-TBESH" : "Abbott-Smith"] : kind === "X" ? src.OpenBible
       : kind === "K" ? src[String(item?.meta?.key)] : null;
     if (!source) continue; // C: ids link claims to claims; the chain continues through that claim's own citations
     const locator =
@@ -216,13 +231,21 @@ export async function saveStudy(book: Book, chapter: number, s: Study, pack: Evi
   };
 
   await sql.begin(async (tx) => {
-    // Clear the previous AI draft for this chapter (verified work is never touched).
-    await tx`delete from claims where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft' and status = 'unverified'`;
-    await tx`delete from sections where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft'`;
-    await tx`delete from connections where book_id = ${book.id} and chapter = ${chapter}`;
-    await tx`delete from interp_questions where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft'`;
-    await tx`delete from reflection_items where book_id = ${book.id} and chapter = ${chapter}`;
-    await tx`delete from language_notes where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft'`;
+    // Clear the previous AI draft for this chapter (verified work is never touched). An OT chapter's study is its
+    // Reflect step only, so only that is replaced.
+    const ot = book.testament === "OT";
+    if (ot) {
+      await tx`delete from claims where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft' and status = 'unverified' and step = 'reflect'`;
+      await tx`delete from reflection_items where book_id = ${book.id} and chapter = ${chapter}`;
+      s = { ...s, sections: [], margin_notes: [], observations: [], context: [], language: [], connections: [], interpretations: [] };
+    } else {
+      await tx`delete from claims where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft' and status = 'unverified'`;
+      await tx`delete from sections where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft'`;
+      await tx`delete from connections where book_id = ${book.id} and chapter = ${chapter}`;
+      await tx`delete from interp_questions where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft'`;
+      await tx`delete from reflection_items where book_id = ${book.id} and chapter = ${chapter}`;
+      await tx`delete from language_notes where book_id = ${book.id} and chapter = ${chapter} and origin = 'ai_draft'`;
+    }
 
     const insertClaim = (c: CheckedClaim, step: string, topic: string | null = null, strongs: string | null = null) =>
       writeClaim(tx, book, chapter, pack, src, c, step, topic, strongs);
