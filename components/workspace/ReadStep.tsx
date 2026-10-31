@@ -22,7 +22,7 @@ export function ReadStep({
   onVerse,
   activeVerse = null,
   licensed = {},
-  licensedFailed = [],
+  unavailable = {},
   highlights = {},
   noted = {},
   notedText = {},
@@ -31,7 +31,7 @@ export function ReadStep({
   verses: VerseRow[];
   prefs: ReadPrefs;
   licensed?: Record<string, LicensedText>;
-  licensedFailed?: string[];
+  unavailable?: Partial<Record<string, string>>;
   selected: GreekWord | null;
   onSelectWord: (w: GreekWord) => void;
   marks?: PhraseMark[];
@@ -48,6 +48,6 @@ export function ReadStep({
 
   // Provenance underlines are anchored to the WEB wording, so they only show on WEB.
   const markFor = (v: VerseRow, code: VersionCode) => (code === "WEB" ? marks.filter((m) => m.ord === v.ord) : []);
-  const shared = { verses, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes };
+  const shared = { verses, licensed, unavailable, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes };
   return prefs.compare.length ? <CompareView {...shared} prefs={prefs} /> : <FlowingView {...shared} code={prefs.primary} />;
 }

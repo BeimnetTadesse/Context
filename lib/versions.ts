@@ -14,6 +14,8 @@ interface VersionDef {
   note: string;
   /** Ge'ez script: Ethiopic font, and only compared word for word with other Ethiopic texts. */
   script?: "ethiopic";
+  /** USFM codes of the books this version has, when it isn't a whole Bible (from the provider's own metadata). */
+  books?: readonly string[];
   source: Source;
 }
 
@@ -32,7 +34,11 @@ export const VERSIONS = [
   { code: "NLT", short: "NLT", name: "New Living Translation", note: "© Tyndale House · thought-for-thought", source: { kind: "apibible", bibleId: "d6e14a625393b4da-01" } },
   { code: "NASB", short: "NASB", name: "New American Standard Bible 2020", note: "© Lockman Foundation · word-for-word", source: { kind: "apibible", bibleId: "a761ca71e0b3ddcf-01" } },
   { code: "AMP", short: "AMP", name: "Amplified Bible", note: "© Lockman Foundation · expanded: [brackets] add shades of meaning", source: { kind: "youversion", bibleId: 1588, publisher: LOCKMAN } },
-  { code: "TPT", short: "TPT", name: "The Passion Translation", note: "© Passion & Fire Ministries · paraphrase; 2020 NT, under publisher review", source: { kind: "youversion", bibleId: 1849, publisher: { name: "BroadStreet Publishing", url: "https://broadstreetpublishing.com" } } },
+  { code: "TPT", short: "TPT", name: "The Passion Translation", note: "© Passion & Fire Ministries · paraphrase; 2020 NT, under publisher review", source: { kind: "youversion", bibleId: 1849, publisher: { name: "BroadStreet Publishing", url: "https://broadstreetpublishing.com" } },
+    // TPT has not translated the rest of the Old Testament.
+    books: ["GEN", "JOS", "JDG", "RUT", "PSA", "PRO", "SNG", "ISA", "JER", "LAM", "EZK", "DAN", "HOS", "JOL", "AMO", "OBA", "JON", "MIC",
+      "NAM", "HAB", "ZEP", "HAG", "ZEC", "MAL", "MAT", "MRK", "LUK", "JHN", "ACT", "ROM", "1CO", "2CO", "GAL", "EPH", "PHP", "COL", "1TH",
+      "2TH", "1TI", "2TI", "TIT", "PHM", "HEB", "JAS", "1PE", "2PE", "1JN", "2JN", "3JN", "JUD", "REV"] },
 ] as const satisfies readonly VersionDef[];
 
 export type VersionCode = (typeof VERSIONS)[number]["code"];
@@ -44,6 +50,11 @@ const sourceOf = (c: string): Source["kind"] => (VERSIONS as readonly VersionDef
 export const isLicensedVersion = (c: string) => sourceOf(c) !== "local";
 /** Licensed through the YouVersion Platform (the others come from API.Bible). */
 export const isYouVersion = (c: string) => sourceOf(c) === "youversion";
+/** Whether this version has the book at all (TPT, for one, has only part of the Old Testament). */
+export const versionHasBook = (c: string, usfm: string) => {
+  const books = (VERSIONS as readonly VersionDef[]).find((v) => v.code === c)?.books;
+  return !books || books.includes(usfm);
+};
 export const isEthiopic = (c: string) => (VERSIONS as readonly VersionDef[]).find((v) => v.code === c)?.script === "ethiopic";
 
 export interface ReadPrefs {

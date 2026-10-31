@@ -5,7 +5,7 @@ import { coveredBy, spanEnd, textOf } from "./text";
 import type { ReadViewProps } from "./types";
 
 /** Compare: one row per verse, a column per version. */
-export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes }: ReadViewProps & { prefs: ReadPrefs }) {
+export function CompareView({ verses, prefs, licensed, unavailable, markFor, trail, onVerse, activeVerse, highlights, noted, notedText, onOpenNotes }: ReadViewProps & { prefs: ReadPrefs }) {
   const ot = useStudy().book.testament === "OT";
   const cols = [prefs.primary, ...prefs.compare];
   const grid = cols.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
@@ -37,9 +37,12 @@ export function CompareView({ verses, prefs, licensed, licensedFailed, markFor, 
                 <div key={c} data-version={c} {...(isLicensedVersion(c) ? { ...guard, "data-licensed": c } : {})}>
                   <p data-noquote className="mb-0.5 select-none font-mono text-[0.62rem] uppercase tracking-widest text-muted sm:hidden">{versionInfo(c).short}</p>
                   {pending ? (
-                    <p className="font-sans text-sm italic text-muted">
-                      {licensedFailed.includes(c) ? `${versionInfo(c).short} is unavailable right now.` : `Loading ${versionInfo(c).short}…`}
-                    </p>
+                    // Say it once, at the top of the column, not beside every verse.
+                    v.ord === verses[0].ord && (
+                      <p className="font-sans text-sm italic text-muted">
+                        {unavailable[c] ?? `Loading ${versionInfo(c).short}…`}
+                      </p>
+                    )
                   ) : text ? (
                     <p className={ethiopic ? "ethiopic text-[1.05rem] leading-relaxed" : "font-serif text-[1.15rem] leading-relaxed"}>
                       <Vn n={v.verse} end={end} onVerse={i === 0 && !amh ? onVerse : undefined} active={activeVerse === v.verse} />
