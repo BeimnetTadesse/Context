@@ -1,4 +1,4 @@
-// Downloads two public-domain reference works' articles on the New Testament books, for book overviews:
+// Downloads two public-domain reference works' articles on the books of the Bible, for book overviews:
 //   · International Standard Bible Encyclopedia (1915), from internationalstandardbible.com (robots.txt allows all)
 //   · Easton's Bible Dictionary (1897), from the Christian Classics Ethereal Library ("Public Domain -- Copy Freely")
 // Saves raw pages in data/raw/reference/; cached, so re-running only fetches what's missing. One request at a time.

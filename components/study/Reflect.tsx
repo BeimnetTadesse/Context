@@ -130,7 +130,7 @@ export function ReflectStep({ guesses, notes }: { guesses: Record<number, Label>
 
       {/* Part 2 */}
       <p className="eyebrow mt-16 text-muted">Part 2 · Two questions, kept apart</p>
-      <TwoColumns notes={notes} onSaved={setNoteCount} bookSlug={book.slug} chapter={chapter} />
+      <TwoColumns notes={notes} onSaved={setNoteCount} bookSlug={book.slug} chapter={chapter} ot={book.testament === "OT"} />
 
       {/* Part 3 */}
       <p className="eyebrow mt-16 text-muted">Part 3 · Questions to sit with</p>
@@ -216,7 +216,7 @@ function CheckYourOwn() {
   );
 }
 
-function TwoColumns({ notes, onSaved, bookSlug, chapter }: { notes: SavedNote[]; onSaved: (n: number) => void; bookSlug: string; chapter: number }) {
+function TwoColumns({ notes, onSaved, bookSlug, chapter, ot }: { notes: SavedNote[]; onSaved: (n: number) => void; bookSlug: string; chapter: number; ot: boolean }) {
   const [says, setSays] = useState(notes.find((n) => n.kind === "text_says")?.body ?? "");
   const [bring, setBring] = useState(notes.find((n) => n.kind === "i_bring")?.body ?? "");
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
@@ -232,8 +232,8 @@ function TwoColumns({ notes, onSaved, bookSlug, chapter }: { notes: SavedNote[];
   return (
     <>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        {([["What the text says", says, setSays, "explicit", "Paul asks that they be strengthened with power (3:16)…"],
-           ["What I’m bringing", bring, setBring, "personal", "I assumed ‘mystery’ meant something no one can understand…"]] as const).map(
+        {([["What the text says", says, setSays, "explicit", ot ? "The LORD tells Abram to leave his country and his father’s house (12:1)…" : "Paul asks that they be strengthened with power (3:16)…"],
+           ["What I’m bringing", bring, setBring, "personal", ot ? "I assumed ‘law’ meant only a list of rules…" : "I assumed ‘mystery’ meant something no one can understand…"]] as const).map(
           ([title, value, set, l, ph]) => (
             <label key={title} className="block rounded-2xl border border-rule bg-card p-5">
               <span className="eyebrow flex items-center gap-2 !text-[0.65rem] text-muted"><Dot label={l} /> {title}</span>

@@ -147,8 +147,9 @@ export function ContextStep({ chapterCount }: { chapterCount: number }) {
 
       <p className="mt-8 rounded-xl bg-paper-2 px-4 py-3 text-sm leading-relaxed text-ink-2">
         <span className="eyebrow mr-2 !text-[0.62rem] text-accent">Research note</span>
-        Historical questions such as authorship and date depend on scholarship that is not yet in Context’s source library.
-        Where the assistant mentions them, they are labelled as views and stay unverified until a scholarly source is attached.
+        Authorship and date come from the International Standard Bible Encyclopedia (1915), Easton’s Bible Dictionary (1897)
+        and the commentators’ introductions, not from modern critical scholarship. Traditional attributions are labelled as
+        tradition or as a scholar’s view, and every claim stays unverified until a curator checks it.
       </p>
 
       {/* Phones have no right column: the whole-book panel follows the chapter. */}
