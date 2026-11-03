@@ -60,3 +60,51 @@ export function parseOsis(osis: string): { book: string; chapter: number; verse:
 }
 
 export const studyPath = (book: Pick<Book, "slug">, chapter: number) => `/study/${book.slug}/${chapter}`;
+
+export interface Suggestion {
+  book: Book;
+  chapter?: number; // absent: the suggestion completes the book name only
+  label: string;
+}
+
+/**
+ * Autocomplete for a reference being typed. "ge" → Genesis; "1 j" → 1 John…; "ps 2" → Psalm 2, Psalm 20–29…;
+ * "rom 8:2" → Romans 8:2. Books whose name starts with the input come before those that only contain it or match an alias.
+ */
+export function suggestRefs(input: string, limit = 8): Suggestion[] {
+  const m = /^\s*((?:[1-3]\s*)?[a-z][a-z .]*?)\s*(?:(\d+)(?:\s*[:.]\s*(\d+)?)?)?\s*$/i.exec(input);
+  if (!m) return [];
+  const [, bookPart, ch, verse] = m;
+  const key = normalize(bookPart);
+  if (!key) return [];
+
+  if (ch) {
+    const book = findBook(bookPart);
+    if (!book) return [];
+    const name = book.name === "Psalms" ? "Psalm" : book.name;
+    if (verse !== undefined || /[:.]\s*$/.test(input)) {
+      const c = Number(ch);
+      return c >= 1 && c <= book.chapters
+        ? [{ book, chapter: c, label: `${name} ${c}${verse ? `:${verse}` : ""}` }]
+        : [];
+    }
+    const out: Suggestion[] = [];
+    for (let c = 1; c <= book.chapters && out.length < limit; c++) {
+      if (String(c).startsWith(ch)) out.push({ book, chapter: c, label: `${name} ${c}` });
+    }
+    return out;
+  }
+
+  const rank = (b: Book) => {
+    const n = normalize(b.name);
+    if (n.startsWith(key)) return 0;
+    if ([b.osis, b.usfm, ...b.aliases].some((a) => normalize(a) === key)) return 1;
+    if (n.includes(key)) return 2;
+    return -1;
+  };
+  return BOOKS.map((b) => ({ b, r: rank(b) }))
+    .filter((x) => x.r >= 0)
+    .sort((x, y) => x.r - y.r || x.b.id - y.b.id)
+    .slice(0, limit)
+    .map(({ b }) => ({ book: b, label: b.name }));
+}
