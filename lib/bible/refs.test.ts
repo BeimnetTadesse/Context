@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRef, parseOsis, parseRef } from "./refs";
+import { formatRef, parseOsis, parseRef, suggestRefs } from "./refs";
 
 describe("parseRef", () => {
   it.each([
@@ -39,5 +39,32 @@ describe("parseOsis", () => {
   it("parses OpenBible ids", () => {
     expect(parseOsis("1Cor.15.9")).toEqual({ book: "1Cor", chapter: 15, verse: 9 });
     expect(parseOsis("bad")).toBeNull();
+  });
+});
+
+describe("suggestRefs", () => {
+  const labels = (q: string) => suggestRefs(q).map((s) => s.label);
+
+  it("completes book names, prefix matches first", () => {
+    expect(labels("ge")).toEqual(["Genesis", "Judges"]); // "Judges" only contains it
+    expect(labels("1 j")).toEqual(["1 John"]);
+    expect(labels("john").slice(0, 4)).toEqual(["John", "1 John", "2 John", "3 John"]);
+    expect(labels("ps")[0]).toBe("Psalms");
+  });
+
+  it("suggests chapters that start with the typed number, within the book", () => {
+    expect(labels("ps 2").slice(0, 3)).toEqual(["Psalm 2", "Psalm 20", "Psalm 21"]);
+    expect(labels("jude 2")).toEqual([]);
+    expect(labels("Genesis 5")).toEqual(["Genesis 5", "Genesis 50"]);
+  });
+
+  it("keeps a verse once one is typed, and rejects a missing chapter", () => {
+    expect(labels("rom 8:28")).toEqual(["Romans 8:28"]);
+    expect(labels("rom 17:1")).toEqual([]);
+  });
+
+  it("returns nothing for empty or unknown input", () => {
+    expect(labels("")).toEqual([]);
+    expect(labels("xyz")).toEqual([]);
   });
 });
